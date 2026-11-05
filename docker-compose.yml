@@ -1,0 +1,76 @@
+name: wiki-mernr
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?definir POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definir POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:?definir POSTGRES_DB en .env}
+    volumes:
+      - wiki_db:/var/lib/postgresql/data
+    networks:
+      - wiki_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      APP_DB_USER: ${APP_DB_USER:?definir APP_DB_USER en .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?definir APP_DB_PASSWORD en .env}
+      SESSION_SECRET: ${SESSION_SECRET:?definir SESSION_SECRET en .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?definir ADMIN_EMAIL en .env}
+      ADMIN_PASSWORD_INICIAL: ${ADMIN_PASSWORD_INICIAL:?definir ADMIN_PASSWORD_INICIAL en .env}
+      VAULTWARDEN_URL: ${VAULTWARDEN_URL:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+    command: ["sh", "-c", "node src/migrate.js && node src/seed.js && exec node src/server.js"]
+    networks:
+      - wiki_net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
+  web:
+    build:
+      context: ./web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8090:80"
+    networks:
+      - wiki_net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+networks:
+  wiki_net:
+    name: wiki_net
+
+volumes:
+  wiki_db:
+    name: wiki_db
