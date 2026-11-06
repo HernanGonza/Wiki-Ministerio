@@ -1,4 +1,6 @@
-// Cliente fetch mínimo. Todo es same-origin (nginx hace proxy de /api).
+import { API_URL } from '../lib';
+
+// Cliente fetch mínimo. Todo es same-origin (nginx hace proxy de /api; si la app cuelga de /wiki/, de /wiki/api).
 export class ApiError extends Error {
   status: number;
   code: string;
@@ -18,7 +20,7 @@ export const setAuthFailureHandler = (fn: UnauthorizedHandler) => {
 };
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     method,
     credentials: 'same-origin',
     headers: method === 'GET' ? undefined : { 'Content-Type': 'application/json' },

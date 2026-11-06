@@ -55,6 +55,8 @@ services:
   web:
     build:
       context: ./web
+      args:
+        VITE_BASE: ${WIKI_BASE_PATH:-/}
     restart: unless-stopped
     depends_on:
       api:

@@ -1,0 +1,12 @@
+# Override para colgar la Wiki del nginx de ecodatos (ruta /wiki/ del mismo dominio).
+# Une el contenedor web a la red "supabase" para que ese nginx lo encuentre por nombre.
+# Se activa con COMPOSE_FILE en .env (ver README).
+services:
+  web:
+    container_name: wiki-web
+    networks: [wiki_net, supabase]
+
+networks:
+  supabase:
+    name: supabase
+    external: true

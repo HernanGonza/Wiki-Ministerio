@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+// Prefijo de la app (Vite.BASE_URL: '/' o '/wiki/'). Todas las URLs absolutas del front pasan por acá.
+export const BASE = import.meta.env.BASE_URL;
+export const API_URL = `${BASE}api`;
+
 const TZ = 'America/Argentina/Buenos_Aires';
 
 export const fmtFecha = (iso: string | null | undefined) =>

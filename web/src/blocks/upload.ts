@@ -1,5 +1,6 @@
 // Subida de archivos con progreso. El servidor decide el tipo real por el contenido;
 // acá solo se valida antes de subir para dar un mensaje claro y no gastar ancho de banda.
+import { API_URL } from '../lib';
 const MB = 1024 * 1024;
 const IMAGENES = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
 const DOCS = ['pdf', 'docx', 'xlsx', 'pptx', 'odt', 'ods', 'odp', 'txt', 'csv'];
@@ -20,14 +21,14 @@ export function validarAntes(file: File): string | null {
   return null;
 }
 
-export const urlArchivo = (id: string) => `/api/files/${id}`;
+export const urlArchivo = (id: string) => `${API_URL}/files/${id}`;
 
 export function subirArchivo(espacio: string, file: File, acceso: 'general' | 'restringido', onProgreso?: (pct: number) => void): Promise<ArchivoSubido> {
   const error = validarAntes(file);
   if (error) return Promise.reject(new Error(error));
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/api/admin/spaces/${encodeURIComponent(espacio)}/files`);
+    xhr.open('POST', `${API_URL}/admin/spaces/${encodeURIComponent(espacio)}/files`);
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.setRequestHeader('X-Wiki-Upload', '1');
     xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));

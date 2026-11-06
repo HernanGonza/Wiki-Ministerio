@@ -137,6 +137,22 @@ la vista previa se arma al lado mientras se escribe (pestañas Editar / Vista pr
 - **Pendiente de este modelo:** los anuncios siguen en Markdown (la columna `announcements.cuerpo_json` ya existe,
   falta API y pantalla).
 
+## Publicarla en una ruta del dominio de ecodatos (`/wiki/`)
+
+La app puede colgar de una ruta en vez de la raíz. En el `.env` del servidor:
+
+```
+WIKI_BASE_PATH=/wiki/
+COMPOSE_FILE=docker-compose.yml:docker-compose.ecodatos.yml
+PUBLIC_BASE_URL=https://ecodatos.ecologia.misiones.gob.ar/wiki/
+VAULTWARDEN_URL=https://ecodatos.ecologia.misiones.gob.ar/claves/
+COOKIE_SECURE=true          # solo si el dominio se sirve por HTTPS
+```
+
+y `docker compose up -d --build` (el build usa `WIKI_BASE_PATH` para generar el front con esa ruta). El contenedor `wiki-web`
+queda además en la red `supabase`. Después hay que pegar los bloques de `ecodatos-nginx-wiki-claves.conf` en el nginx de
+ecodatos. Sin `WIKI_BASE_PATH` todo sigue funcionando en la raíz (`http://IP:8090`).
+
 ## Monitor de sistemas
 
 La API verifica cada 60 s todos los sistemas activos (nunca el navegador):
