@@ -40,6 +40,8 @@ services:
       ADMIN_PASSWORD_INICIAL: ${ADMIN_PASSWORD_INICIAL:?definir ADMIN_PASSWORD_INICIAL en .env}
       VAULTWARDEN_URL: ${VAULTWARDEN_URL:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+    volumes:
+      - wiki_files:/data/files
     command: ["sh", "-c", "node src/migrate.js && node src/seed.js && exec node src/server.js"]
     networks:
       - wiki_net
@@ -74,3 +76,5 @@ networks:
 volumes:
   wiki_db:
     name: wiki_db
+  wiki_files:
+    name: wiki_files

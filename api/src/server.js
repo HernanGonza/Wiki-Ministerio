@@ -12,6 +12,7 @@ import { adminContent } from './routes/admin-content.js';
 import { adminSpace } from './routes/admin-space.js';
 import { adminGlobal } from './routes/admin-global.js';
 import { auditRouter } from './routes/audit.js';
+import { filesAdmin, filesPublic } from './routes/files.js';
 import { startMonitor } from './services/monitor.js';
 import { startRetention } from './services/retention.js';
 
@@ -50,6 +51,8 @@ app.use('/api/spaces', spacesRouter);
 app.use('/api/announcements', announcementsRouter);
 app.use('/api/systems', systemsRouter);
 app.use('/api/audit', auditRouter);
+app.use('/api/files', filesPublic);
+app.use('/api/admin/spaces/:slug/files', filesAdmin);
 app.use('/api/admin/spaces/:slug', adminContent);
 app.use('/api/admin/spaces/:slug', adminSpace);
 app.use('/api/admin', adminGlobal);

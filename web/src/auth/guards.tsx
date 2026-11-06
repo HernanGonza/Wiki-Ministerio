@@ -1,12 +1,12 @@
 import { Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
 import { useAuth, esAdmin } from './AuthContext';
-import { NoEncontrado } from '../components/Estados';
+import { NoEncontrado, Cargando } from '@/components/Estados';
 
 /** Exige sesión. Si debe cambiar la contraseña, lo lleva a /cambiar-password. */
 export function RequireAuth() {
   const { me, loading } = useAuth();
   const loc = useLocation();
-  if (loading) return <div className="centrado">Cargando…</div>;
+  if (loading) return <div className="mx-auto w-full max-w-5xl px-6 py-10"><Cargando /></div>;
   if (!me) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   if (me.must_change_password && loc.pathname !== '/cambiar-password') {
     return <Navigate to="/cambiar-password" replace />;

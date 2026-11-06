@@ -7,6 +7,8 @@ import { requireSpaceRole } from '../auth/access.js';
 import { audit } from '../services/audit.js';
 import { canReparent, indexSections } from '../services/tree.js';
 import { slug, uuid, acceso, tituloT, md, optText } from '../schemas.js';
+import { blocksSchema, blocksToMarkdown, collectFileIds } from '../services/blocks.js';
+import { assertArchivosDelEspacio, metaArchivos } from '../services/files.js';
 
 export const adminContent = Router({ mergeParams: true });
 adminContent.use(['/sections', '/pages'], requireSpaceRole('admin_espacio', { noMinisterio: true }));
@@ -79,11 +81,14 @@ const pageFields = {
   contenido_md: md,
   acceso,
 };
+// El contenido canónico son los BLOQUES (`contenido_json`). Si llegan, el servidor deriva
+// `contenido_md` (el cliente no lo elige). `contenido_md` solo se acepta sin bloques (clientes viejos).
 const createPage = z.object({
   section_id: uuid,
   slug,
   titulo: tituloT,
-  contenido_md: md.default(''),
+  contenido_md: md.optional(),
+  contenido_json: blocksSchema.optional(),
   acceso: acceso.default('general'),
 });
 const updatePage = z.object({
@@ -91,9 +96,22 @@ const updatePage = z.object({
   slug: pageFields.slug.optional(),
   titulo: pageFields.titulo.optional(),
   contenido_md: pageFields.contenido_md.optional(),
+  contenido_json: blocksSchema.optional(),
   acceso: pageFields.acceso.optional(),
   section_id: uuid.optional(),
 });
+
+/** Normaliza el contenido a guardar: bloques → (json, md derivado); solo md → (null, md). */
+// node-pg convierte los arrays de JS en arrays de Postgres: el JSONB hay que mandarlo ya serializado.
+const j = (v) => (v == null ? null : JSON.stringify(v));
+
+async function resolverContenido(spaceId, { contenido_json, contenido_md }) {
+  if (contenido_json) {
+    await assertArchivosDelEspacio(collectFileIds(contenido_json), spaceId);
+    return { contenido_json, contenido_md: blocksToMarkdown(contenido_json) };
+  }
+  return { contenido_json: null, contenido_md: contenido_md ?? '' };
+}
 
 async function loadPage(spaceId, id) {
   const r = await query(
@@ -106,22 +124,23 @@ async function loadPage(spaceId, id) {
 adminContent.get('/pages/:id', h(async (req, res) => {
   const p = await loadPage(req.space.id, parse(uuid, req.params.id));
   if (!p) throw notFound();
-  res.json(p);
+  res.json({ ...p, archivos: p.contenido_json ? await metaArchivos(collectFileIds(p.contenido_json)) : {} });
 }));
 
 adminContent.post('/pages', h(async (req, res) => {
   const b = parse(createPage, req.body);
   const sec = await query('SELECT id FROM sections WHERE id = $1 AND space_id = $2', [b.section_id, req.space.id]);
   if (!sec.rows[0]) throw badRequest('La sección no existe en este espacio');
+  const cont = await resolverContenido(req.space.id, b);
   const page = await tx(async (c) => {
     const { rows } = await c.query(
-      `INSERT INTO pages (section_id, slug, titulo, contenido_md, acceso, version, updated_by)
-       VALUES ($1,$2,$3,$4,$5,1,$6) RETURNING *`,
-      [b.section_id, b.slug, b.titulo, b.contenido_md, b.acceso, req.user.id],
+      `INSERT INTO pages (section_id, slug, titulo, contenido_md, contenido_json, acceso, version, updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,1,$7) RETURNING *`,
+      [b.section_id, b.slug, b.titulo, cont.contenido_md, j(cont.contenido_json), b.acceso, req.user.id],
     );
     await c.query(
-      `INSERT INTO page_versions (page_id, version, titulo, contenido_md, created_by) VALUES ($1,1,$2,$3,$4)`,
-      [rows[0].id, b.titulo, b.contenido_md, req.user.id],
+      `INSERT INTO page_versions (page_id, version, titulo, contenido_md, contenido_json, created_by) VALUES ($1,1,$2,$3,$4,$5)`,
+      [rows[0].id, b.titulo, cont.contenido_md, j(cont.contenido_json), req.user.id],
     );
     return rows[0];
   });
@@ -138,17 +157,20 @@ async function savePage(req, id, changes, baseVersion) {
     if (!sec.rows[0]) throw badRequest('La sección no existe en este espacio');
   }
   const m = { ...cur, ...changes };
+  // Si no se tocó el contenido se conserva el actual; si se tocó, se normaliza (y valida).
+  const cambioContenido = 'contenido_json' in changes || 'contenido_md' in changes;
+  const cont = cambioContenido ? await resolverContenido(req.space.id, changes) : { contenido_json: cur.contenido_json, contenido_md: cur.contenido_md };
   const updated = await tx(async (c) => {
     const { rows } = await c.query(
-      `UPDATE pages SET slug=$3, titulo=$4, contenido_md=$5, acceso=$6, section_id=$7,
-              version = version + 1, updated_at = now(), updated_by = $8
+      `UPDATE pages SET slug=$3, titulo=$4, contenido_md=$5, contenido_json=$6, acceso=$7, section_id=$8,
+              version = version + 1, updated_at = now(), updated_by = $9
         WHERE id = $1 AND version = $2 RETURNING *`,
-      [id, baseVersion, m.slug, m.titulo, m.contenido_md, m.acceso, m.section_id, req.user.id],
+      [id, baseVersion, m.slug, m.titulo, cont.contenido_md, j(cont.contenido_json), m.acceso, m.section_id, req.user.id],
     );
     if (!rows[0]) return null;
     await c.query(
-      `INSERT INTO page_versions (page_id, version, titulo, contenido_md, created_by) VALUES ($1,$2,$3,$4,$5)`,
-      [id, rows[0].version, rows[0].titulo, rows[0].contenido_md, req.user.id],
+      `INSERT INTO page_versions (page_id, version, titulo, contenido_md, contenido_json, created_by) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [id, rows[0].version, rows[0].titulo, rows[0].contenido_md, j(rows[0].contenido_json), req.user.id],
     );
     return rows[0];
   });
@@ -192,11 +214,11 @@ adminContent.get('/pages/:id/versions/:version', h(async (req, res) => {
   const ver = parse(z.coerce.number().int().min(1), req.params.version);
   if (!(await loadPage(req.space.id, id))) throw notFound();
   const { rows } = await query(
-    'SELECT version, titulo, contenido_md, created_at FROM page_versions WHERE page_id = $1 AND version = $2',
+    'SELECT version, titulo, contenido_md, contenido_json, created_at FROM page_versions WHERE page_id = $1 AND version = $2',
     [id, ver],
   );
   if (!rows[0]) throw notFound();
-  res.json(rows[0]);
+  res.json({ ...rows[0], archivos: rows[0].contenido_json ? await metaArchivos(collectFileIds(rows[0].contenido_json)) : {} });
 }));
 
 // Restaurar = guardar el contenido antiguo como una versión nueva.
@@ -204,9 +226,11 @@ adminContent.post('/pages/:id/restore', h(async (req, res) => {
   const id = parse(uuid, req.params.id);
   const b = parse(z.object({ version: z.number().int().min(1), version_base: z.number().int().min(1) }), req.body);
   if (!(await loadPage(req.space.id, id))) throw notFound();
-  const old = await query('SELECT titulo, contenido_md FROM page_versions WHERE page_id = $1 AND version = $2', [id, b.version]);
+  const old = await query('SELECT titulo, contenido_md, contenido_json FROM page_versions WHERE page_id = $1 AND version = $2', [id, b.version]);
   if (!old.rows[0]) throw notFound('Versión no encontrada');
-  const page = await savePage(req, id, old.rows[0], b.version_base);
+  // Se restaura el mismo formato que tenía la versión (bloques o Markdown heredado).
+  const { titulo, contenido_md, contenido_json } = old.rows[0];
+  const page = await savePage(req, id, contenido_json ? { titulo, contenido_json } : { titulo, contenido_md }, b.version_base);
   await audit(req, 'editar_pagina', 'pagina', id, req.space.id);
   res.json(page);
 }));

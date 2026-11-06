@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
-import type { SectionNode } from '../api/types';
+import type { SectionNode } from '@/api/types';
+
+export { Breadcrumbs, type Crumb } from '@/components/ui/page';
 
 /** Camino desde la raíz hasta la sección con ese slug (o null). */
 export function pathTo(tree: SectionNode[], slug: string, acc: SectionNode[] = []): SectionNode[] | null {
@@ -10,19 +11,4 @@ export function pathTo(tree: SectionNode[], slug: string, acc: SectionNode[] = [
     if (r) return r;
   }
   return null;
-}
-
-export interface Crumb { to?: string; label: string }
-
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
-  return (
-    <nav className="breadcrumbs" aria-label="Ruta">
-      {items.map((c, i) => (
-        <span key={i}>
-          {i > 0 && <span aria-hidden="true"> › </span>}
-          {c.to ? <Link to={c.to}>{c.label}</Link> : <span aria-current="page">{c.label}</span>}
-        </span>
-      ))}
-    </nav>
-  );
 }

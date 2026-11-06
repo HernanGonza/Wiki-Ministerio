@@ -46,6 +46,11 @@ export function requireGlobalAdmin(req, _res, next) {
 
 /** CSRF: sameSite=lax + JSON obligatorio en métodos que modifican datos. */
 export function requireJsonOnWrite(req, _res, next) {
+  // Subida de archivos: cuerpo binario. Exige una cabecera personalizada, que un formulario o
+  // una request "simple" cross-site no puede enviar sin pasar por CORS (que no está habilitado).
+  if (req.method === 'POST' && /^\/admin\/spaces\/[^/]+\/files\/?$/.test(req.path) && req.get('x-wiki-upload') === '1') {
+    return next();
+  }
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && !req.is('application/json')) {
     return next(new AppError(415, 'unsupported_media_type', 'Se requiere Content-Type: application/json'));
   }

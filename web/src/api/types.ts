@@ -1,3 +1,4 @@
+import type { ArchivosMap, Block } from '@/blocks/types';
 export type Rol = 'general' | 'admin_espacio' | 'admin_global';
 export type Acceso = 'general' | 'restringido';
 export type Prioridad = 'alta' | 'media' | 'baja';
@@ -45,6 +46,8 @@ export interface PageData {
   slug: string;
   titulo: string;
   contenido_md: string;
+  contenido_json: Block[] | null;
+  archivos: ArchivosMap;
   acceso: Acceso;
   acceso_efectivo: Acceso;
   version: number;
@@ -60,6 +63,8 @@ export interface EditablePage {
   slug: string;
   titulo: string;
   contenido_md: string;
+  contenido_json: Block[] | null;
+  archivos: ArchivosMap;
   acceso: Acceso;
   version: number;
 }

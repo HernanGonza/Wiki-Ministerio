@@ -10,11 +10,21 @@ anuncios, estado de sistemas y referencias a credenciales. El primer espacio es 
 - **Credenciales de sistemas:** viven en Vaultwarden. La Wiki guarda solo el *nombre del item*.
 
 ```
-db/migrations   esquema (001_init.sql)         api/src   servidor, auth, rutas, monitor
+db/migrations   esquema (001, 002 bloques y archivos)         api/src   servidor, auth, rutas, monitor
 db/seed         datos iniciales (una vez c/u)  web/src   interfaz
 tests/          pruebas de integración (no van en la imagen)
 vaultwarden/    convención de nombres de items
 ```
+
+## Desarrollo local (sin Docker)
+
+`npm run dev` en la raíz: instala dependencias, crea `.env` con valores de desarrollo (la clave inicial del admin
+queda en `ADMIN_PASSWORD_INICIAL` y se cambia en el primer ingreso), levanta PostgreSQL 16 embebido (puerto 54329,
+datos en `.dev/`), aplica migraciones y seeds, y arranca la API y la web (http://127.0.0.1:5173).
+`npm run dev:reset` borra la base de desarrollo y los archivos subidos. `npm test` corre las pruebas de la API.
+
+**Interfaz:** Tailwind v4 con tokens de la marca (Brandbook 2024), modo oscuro, Motion, cmdk (Ctrl+K), SweetAlert2
+para alertas y confirmaciones, sidebar colapsable (Ctrl+B). Tipografía Oak Sans (licencia OFL, en `web/public/fonts`).
 
 ## Requisitos
 
@@ -98,12 +108,34 @@ Los anuncios del Ministerio (transversales) se muestran en la portada y en **tod
 
 ## Contenido
 
-- Markdown con sanitización obligatoria (no se interpreta HTML crudo). Los enlaces que empiezan con `/` o son
-  relativos navegan dentro de la Wiki; los externos abren en pestaña nueva. Las imágenes externas las bloquea la CSP.
-- Editor con vista previa lado a lado. Cada guardado crea una versión; se puede ver y restaurar el historial.
-- Edición concurrente con control optimista: si otra persona guardó antes, el guardado devuelve 409 y el editor
-  lo informa sin pisar nada.
-- Una página de una sección `restringido` es restringida aunque figure como `general`.
+El contenido se escribe con un **editor de bloques** (no hace falta saber Markdown). Cada página es una lista de
+bloques: texto, título, subtítulo, lista, lista numerada, llamado (nota/atención/listo/importante), cita, imagen,
+archivo, tabla, código, divisor y **organigrama**. Se insertan con `/` o "Agregar bloque", se reordenan arrastrando y
+la vista previa se arma al lado mientras se escribe (pestañas Editar / Vista previa si no hay ancho).
+
+- **Modelo:** el contenido canónico es `pages.contenido_json` (JSONB, lista de bloques). El servidor lo valida con un
+  esquema estricto (`api/src/services/blocks.js`, zod) y deriva `contenido_md` (búsqueda/compatibilidad). El
+  frontend lo dibuja con componentes React (`web/src/blocks/BlockRenderer.tsx`): no hay HTML crudo. Los enlaces solo
+  pueden ser `http(s)`, `mailto:`, rutas internas o anclas. Las páginas viejas en Markdown se convierten a bloques
+  al abrirlas para editar. Tiptap se usa solo por dentro, para el texto con formato de cada bloque.
+- **Versiones y concurrencia:** cada guardado crea una versión (con su JSON); se puede ver y restaurar. Control
+  optimista: si otra persona guardó antes, la API responde 409 y el editor lo informa sin pisar nada.
+- **Restringido:** una página de una sección `restringido` es restringida aunque figure como `general`.
+- **Archivos e imágenes:** se suben arrastrando, pegando o con el botón. Se guardan en el volumen del servidor
+  (`FILES_DIR`, por defecto `/data/files`; en compose, volumen `wiki_files`; en desarrollo `.dev/files`), con tabla
+  `files` (migración `002`). Permitidos: png, jpg, gif, webp, pdf, docx, xlsx, pptx, odt, ods, odp, txt, csv
+  (**sin SVG**), validados por firma (magic bytes). Máximo 10 MB imágenes y 25 MB el resto (nginx: `client_max_body_size 26m`).
+  Se sirven en `GET /api/files/:id` solo con sesión y permiso del espacio; los restringidos, solo administración.
+  Siempre con `nosniff` y CSP `sandbox`; solo las imágenes se muestran inline. El acceso de un archivo se fija al
+  subirlo, según el de la página. Los archivos huérfanos (subidos y luego no usados) no se limpian solos.
+- **PDF en la página:** un bloque archivo PDF puede mostrarse incrustado (hojas dibujadas con pdf.js, cargado
+  recién al verlo), con zoom (−/+, Ctrl+rueda), pantalla completa, abrir en pestaña y descargar.
+- **Organigrama:** bloque de árbol editable (hasta 8 niveles y 500 cuadros). Se edita como esquema (Enter, Ctrl+Enter,
+  Tab/Shift+Tab, menú ⋮ por cuadro: destacar, enlace, apilar hijos en columna, mover, eliminar) y se publica como
+  diagrama HTML/CSS con zoom, pantalla completa y arrastre. El organigrama del PDF de mayo 2024 está cargado en
+  *Gabinete y Áreas Centrales → Organigrama* (`db/seed/007_organigrama_diagrama.sql`).
+- **Pendiente de este modelo:** los anuncios siguen en Markdown (la columna `announcements.cuerpo_json` ya existe,
+  falta API y pantalla).
 
 ## Monitor de sistemas
 
@@ -192,6 +224,15 @@ prueba de rate limit **deja bloqueada la IP de origen durante 15 minutos** (`doc
 - La interfaz solo oculta opciones; todos los permisos se aplican en la API.
 
 ## Pendientes y supuestos a confirmar
+
+- **Estructura del organigrama (`db/seed/006` y `007`)** leída de un PDF con líneas cruzadas: confirmar con el área qué
+  Departamento va con cada Dirección, los acrónimos (C.T.M., Proc. I.S., R. y C.A.S., M.S. de Bosques Nativos) y de quién
+  depende cada área (Bosques Nativos, Administración, Asuntos Jurídicos, Cómputos, Comunicación). `ministerio` es solo
+  portada (no admite secciones): las áreas centrales están en el espacio `gabinete-ministerial`.
+- **Sin verificar en Docker/producción:** subida y descarga de archivos tras nginx, el volumen `wiki_files`, el límite de 26 MB,
+  la CSP con `'unsafe-inline'` en estilos (la necesitan SweetAlert y Motion) y el visor de PDF (worker de pdf.js).
+- **Mejoras opcionales:** búsqueda de contenido en el servidor (tsvector), carga diferida de rutas (el bundle principal pesa ~870 kB),
+  bloques en anuncios, limpieza de archivos huérfanos, fuentes Oak Sans en `.woff2` (hoy `.ttf`).
 
 - **Logo y colores del Ministerio:** hoy hay una marca provisoria (`M`) y el acento verde está en `--acento` (`web/src/styles/main.css`).
 - **Títulos de subsecciones de OT:** el pedido daba solo los slugs de `dg-*`, `asuntos-juridicos`, etc.; los títulos

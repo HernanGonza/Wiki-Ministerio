@@ -1,9 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api/client';
-import { useAuth } from '../auth/AuthContext';
-import { ErrorMsg } from '../components/Estados';
-import { errMsg } from '../lib';
+import { KeyRound } from 'lucide-react';
+import { api } from '@/api/client';
+import { useAuth } from '@/auth/AuthContext';
+import { errMsg } from '@/lib';
+import { toast } from '@/ui/feedback';
+import { Button } from '@/components/ui/button';
+import { Field, Input } from '@/components/ui/field';
+import { Alert, PageEnter } from '@/components/ui/page';
 
 const MIN = 12;
 
@@ -25,6 +29,7 @@ export function CambiarPassword() {
     try {
       await api.post('/auth/change-password', { actual, nueva });
       await refresh();
+      toast.ok('Contraseña actualizada');
       nav('/', { replace: true });
     } catch (err) {
       setError(errMsg(err));
@@ -34,25 +39,19 @@ export function CambiarPassword() {
   }
 
   return (
-    <main className="login">
-      <form className="card form" onSubmit={onSubmit}>
-        <h2>Cambiar contraseña</h2>
-        {me?.must_change_password && <p className="muted">Es necesario cambiar la contraseña antes de continuar.</p>}
-        <label>
-          Contraseña actual
-          <input type="password" autoComplete="current-password" value={actual} onChange={(e) => setActual(e.target.value)} required />
-        </label>
-        <label>
-          Contraseña nueva (mínimo {MIN} caracteres)
-          <input type="password" autoComplete="new-password" minLength={MIN} value={nueva} onChange={(e) => setNueva(e.target.value)} required />
-        </label>
-        <label>
-          Repetir contraseña nueva
-          <input type="password" autoComplete="new-password" value={repetir} onChange={(e) => setRepetir(e.target.value)} required />
-        </label>
-        <ErrorMsg msg={error} />
-        <button className="btn btn-primary" disabled={busy}>{busy ? 'Guardando…' : 'Cambiar contraseña'}</button>
+    <PageEnter className="mx-auto grid w-full max-w-md flex-1 place-items-center px-4 py-12">
+      <form onSubmit={onSubmit} className="grid w-full gap-4 rounded-3xl border bg-card p-7 shadow-lg">
+        <span className="grid size-12 place-items-center rounded-2xl bg-primary/12 text-primary"><KeyRound className="size-6" /></span>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Cambiar contraseña</h1>
+          {me?.must_change_password && <p className="mt-1 text-sm text-muted-foreground">Es necesario cambiar la contraseña antes de continuar.</p>}
+        </div>
+        <Field label="Contraseña actual">{(id) => <Input id={id} type="password" autoComplete="current-password" value={actual} onChange={(e) => setActual(e.target.value)} required />}</Field>
+        <Field label="Contraseña nueva" hint={`Mínimo ${MIN} caracteres.`}>{(id) => <Input id={id} type="password" autoComplete="new-password" minLength={MIN} value={nueva} onChange={(e) => setNueva(e.target.value)} required />}</Field>
+        <Field label="Repetir contraseña nueva">{(id) => <Input id={id} type="password" autoComplete="new-password" value={repetir} onChange={(e) => setRepetir(e.target.value)} required />}</Field>
+        {error && <Alert>{error}</Alert>}
+        <Button type="submit" size="lg" loading={busy}>Cambiar contraseña</Button>
       </form>
-    </main>
+    </PageEnter>
   );
 }

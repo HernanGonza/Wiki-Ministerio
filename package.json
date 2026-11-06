@@ -1,0 +1,17 @@
+{
+  "name": "wiki-mernr",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Wiki MERNR: raíz del monorepo. `npm run dev` levanta base de datos, API y web.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:reset": "node scripts/dev.mjs --reset",
+    "build": "npm --prefix web run build",
+    "test": "npm --prefix api test"
+  },
+  "devDependencies": {
+    "embedded-postgres": "16.15.0-beta.19"
+  }
+}

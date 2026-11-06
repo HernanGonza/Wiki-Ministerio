@@ -4,6 +4,8 @@ import { h, notFound } from '../http.js';
 import { resolveSpace, hasRole } from '../auth/access.js';
 import { buildTree, indexSections } from '../services/tree.js';
 import { audit } from '../services/audit.js';
+import { collectFileIds } from '../services/blocks.js';
+import { metaArchivos } from '../services/files.js';
 
 export const spacesRouter = Router();
 
@@ -56,7 +58,7 @@ spacesRouter.get('/:slug/sections/:seccion/pages/:pagina', h(async (req, res) =>
   if (!section) throw notFound();
 
   const pg = await query(
-    `SELECT p.id, p.slug, p.titulo, p.contenido_md, p.acceso, p.version, p.updated_at, u.nombre AS updated_by_nombre
+    `SELECT p.id, p.slug, p.titulo, p.contenido_md, p.contenido_json, p.acceso, p.version, p.updated_at, u.nombre AS updated_by_nombre
        FROM pages p LEFT JOIN users u ON u.id = p.updated_by
       WHERE p.section_id = $1 AND p.slug = $2`,
     [section.id, req.params.pagina],
@@ -69,8 +71,10 @@ spacesRouter.get('/:slug/sections/:seccion/pages/:pagina', h(async (req, res) =>
   if (restringida && !hasRole(rol, 'admin_espacio')) throw notFound();
   if (restringida) await audit(req, 'ver_pagina_restringida', 'pagina', page.id, space.id);
 
+  const archivos = page.contenido_json ? await metaArchivos(collectFileIds(page.contenido_json)) : {};
   res.json({
     ...page,
+    archivos,
     acceso_efectivo: restringida ? 'restringido' : 'general',
     section: { id: section.id, slug: section.slug, titulo: section.titulo },
     puede_editar: hasRole(rol, 'admin_espacio'),

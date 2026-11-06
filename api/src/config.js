@@ -10,6 +10,7 @@ const IDENT = /^[a-z_][a-z0-9_]*$/;
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   dbDir: process.env.DB_DIR ?? '/app/db',
+  filesDir: process.env.FILES_DIR ?? '/data/files',
   db: {
     host: process.env.DB_HOST ?? 'db',
     port: Number(process.env.DB_PORT ?? 5432),
