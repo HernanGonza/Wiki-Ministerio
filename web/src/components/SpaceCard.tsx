@@ -17,7 +17,7 @@ export function SpaceCard({ s }: { s: Space }) {
           {s.subtitulo && <p className="text-sm font-medium text-primary">{s.subtitulo}</p>}
           {s.descripcion && <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{s.descripcion}</p>}
         </div>
-        <Badge variant={s.rol === 'general' ? 'default' : 'rosa'} className="w-fit">{s.rol === 'general' ? 'Lectura' : <><Shield className="size-3" />Administración</>}</Badge>
+        <Badge variant={s.rol === 'admin_espacio' || s.rol === 'admin_global' ? 'rosa' : 'default'} className="w-fit">{s.rol !== 'admin_espacio' && s.rol !== 'admin_global' ? 'Lectura' : <><Shield className="size-3" />Administración</>}</Badge>
       </Link>
     </SpotlightCard>
   );

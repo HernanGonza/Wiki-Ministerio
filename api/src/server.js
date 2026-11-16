@@ -3,7 +3,7 @@ import helmet from 'helmet';
 import { config } from './config.js';
 import { pool, query } from './db.js';
 import { errorMiddleware, notFound, h } from './http.js';
-import { requireAuth, requireJsonOnWrite } from './auth/middleware.js';
+import { requireAuth, optionalAuth, requireJsonOnWrite } from './auth/middleware.js';
 import { publicAuth, privateAuth } from './routes/auth.js';
 import { spacesRouter } from './routes/spaces.js';
 import { announcementsRouter } from './routes/announcements.js';
@@ -44,14 +44,18 @@ app.use('/api', requireJsonOnWrite);
 // Login: sin sesión.
 app.use('/api/auth', publicAuth);
 
+// Lectura pública (solo GET): con o sin sesión. Lo marcado `restringido` solo lo ven los admins.
+const soloLectura = (req, _res, next) =>
+  ['GET', 'HEAD'].includes(req.method) ? next() : next(notFound());
+app.use('/api/spaces', optionalAuth, soloLectura, spacesRouter);
+app.use('/api/announcements', optionalAuth, soloLectura, announcementsRouter);
+app.use('/api/systems', optionalAuth, soloLectura, systemsRouter);
+app.use('/api/files', optionalAuth, soloLectura, filesPublic);
+
 // Desde acá, sesión obligatoria.
 app.use('/api', requireAuth);
 app.use('/api/auth', privateAuth);
-app.use('/api/spaces', spacesRouter);
-app.use('/api/announcements', announcementsRouter);
-app.use('/api/systems', systemsRouter);
 app.use('/api/audit', auditRouter);
-app.use('/api/files', filesPublic);
 app.use('/api/admin/spaces/:slug/files', filesAdmin);
 app.use('/api/admin/spaces/:slug', adminContent);
 app.use('/api/admin/spaces/:slug', adminSpace);

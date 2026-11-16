@@ -1,5 +1,5 @@
 import type { ArchivosMap, Block } from '@/blocks/types';
-export type Rol = 'general' | 'admin_espacio' | 'admin_global';
+export type Rol = 'publico' | 'general' | 'admin_espacio' | 'admin_global';
 export type Acceso = 'general' | 'restringido';
 export type Prioridad = 'alta' | 'media' | 'baja';
 export type Estado = 'online' | 'lento' | 'offline';

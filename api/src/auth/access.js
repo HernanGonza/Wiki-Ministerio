@@ -3,10 +3,10 @@ import { notFound, forbidden } from '../http.js';
 
 /**
  * Roles efectivos, de menor a mayor:
- *   general < admin_espacio < admin_global
+ *   publico < general < admin_espacio < admin_global
  * En `ministerio` todo usuario autenticado es `general`; solo el admin global gestiona.
  */
-const LEVEL = { general: 1, admin_espacio: 2, admin_global: 3 };
+const LEVEL = { publico: 0, general: 1, admin_espacio: 2, admin_global: 3 };
 
 /**
  * Resuelve un espacio por slug y el rol del usuario en él.
@@ -56,4 +56,24 @@ export function requireSpaceRole(min, { noMinisterio = false } = {}) {
       next(err);
     }
   };
+}
+
+/**
+ * Lectura pública: cualquiera (con o sin sesión) puede leer un espacio activo.
+ * `user` puede ser null. El rol es el del usuario en el espacio o `publico`.
+ * Lo restringido se oculta con `hasRole(rol, 'admin_espacio')`, igual que antes.
+ */
+export async function resolveSpaceRead(user, slug) {
+  const { rows } = await query(
+    'SELECT id, slug, nombre, subtitulo, descripcion, activo, orden FROM spaces WHERE slug = $1',
+    [slug],
+  );
+  const space = rows[0];
+  if (!space) throw notFound('Espacio no encontrado');
+  if (user?.es_admin_global) return { space, rol: 'admin_global' };
+  if (!space.activo) throw notFound('Espacio no encontrado');
+  if (!user) return { space, rol: 'publico' };
+  if (space.slug === 'ministerio') return { space, rol: 'general' };
+  const r = await query('SELECT rol FROM user_space_roles WHERE user_id = $1 AND space_id = $2', [user.id, space.id]);
+  return { space, rol: r.rows[0]?.rol ?? 'publico' };
 }

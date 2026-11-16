@@ -19,12 +19,12 @@ export function cookieOptions() {
   };
 }
 
-export async function createSession(userId, ip, userAgent) {
+export async function createSession(userId, ip, userAgent, viaSso = false) {
   const token = crypto.randomBytes(32).toString('base64url');
   await query(
-    `INSERT INTO sessions (id, user_id, expires_at, ip, user_agent)
-     VALUES ($1, $2, now() + $3 * interval '1 millisecond', $4, $5)`,
-    [hashToken(token), userId, IDLE_MS, ip ?? null, (userAgent ?? '').slice(0, 300) || null],
+    `INSERT INTO sessions (id, user_id, expires_at, ip, user_agent, via_sso)
+     VALUES ($1, $2, now() + $3 * interval '1 millisecond', $4, $5, $6)`,
+    [hashToken(token), userId, IDLE_MS, ip ?? null, (userAgent ?? '').slice(0, 300) || null, viaSso],
   );
   return token;
 }
@@ -38,7 +38,7 @@ export async function resolveSession(token) {
         SET last_seen_at = now(), expires_at = now() + $2 * interval '1 millisecond'
        FROM users u
       WHERE s.id = $1 AND s.expires_at > now() AND u.id = s.user_id AND u.activo
-      RETURNING s.id AS session_id, u.id, u.email, u.nombre, u.es_admin_global, u.must_change_password`,
+      RETURNING s.id AS session_id, s.via_sso, u.id, u.email, u.nombre, u.es_admin_global, u.must_change_password`,
     [id, IDLE_MS],
   );
   return rows[0] ?? null;

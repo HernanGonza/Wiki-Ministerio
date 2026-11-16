@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
 import { AnimatePresence, motion } from 'motion/react';
-import { BookOpen, FileText, FolderTree, Home, LogOut, Megaphone, Moon, Search, Shield, Sun, Activity, History, Layers } from 'lucide-react';
+import { BookOpen, FileText, FolderTree, Home, LogIn, LogOut, Megaphone, Moon, Search, Shield, Sun, Activity, History, Layers } from 'lucide-react';
 import { api } from '@/api/client';
 import type { SectionNode, Space } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';
@@ -18,14 +18,14 @@ export const usePalette = () => {
 };
 
 interface Entrada { espacio: Space; arbol: SectionNode[] }
-let cache: Entrada[] | null = null; // se recarga al iniciar sesión (ver `invalidar`)
+let cache: { clave: string; datos: Entrada[] } | null = null; // se recarga al cambiar de usuario o iniciar sesión
 export const invalidarBusqueda = () => { cache = null; };
 
-async function cargar(): Promise<Entrada[]> {
-  if (cache) return cache;
+async function cargar(clave: string): Promise<Entrada[]> {
+  if (cache?.clave === clave) return cache.datos;
   const espacios = (await api.get<Space[]>('/spaces')).filter((s) => s.slug !== 'ministerio');
   const res = await Promise.all(espacios.map(async (s) => ({ espacio: s, arbol: await api.get<SectionNode[]>(`/spaces/${s.slug}/sections`).catch(() => [] as SectionNode[]) })));
-  cache = res;
+  cache = { clave, datos: res };
   return res;
 }
 
@@ -39,10 +39,8 @@ const filtro = (value: string, search: string, keywords?: string[]) => {
 
 export function PaletteProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const { me } = useAuth();
 
   useEffect(() => {
-    if (!me) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -51,13 +49,13 @@ export function PaletteProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [me]);
+  }, []);
 
   const value = useMemo(() => ({ open, setOpen }), [open]);
   return (
     <Ctx.Provider value={value}>
       {children}
-      {me && <Palette />}
+      <Palette />
     </Ctx.Provider>
   );
 }
@@ -77,9 +75,9 @@ function Palette() {
   useEffect(() => {
     if (!open) { setBusqueda(''); return; }
     let vivo = true;
-    cargar().then((d) => vivo && setDatos(d)).catch(() => vivo && setDatos([]));
+    cargar(me?.id ?? 'anonimo').then((d) => vivo && setDatos(d)).catch(() => vivo && setDatos([]));
     return () => { vivo = false; };
-  }, [open]);
+  }, [open, me?.id]);
 
   const ir = useCallback((to: string) => { setOpen(false); nav(to); }, [nav, setOpen]);
 
@@ -171,10 +169,10 @@ function Palette() {
                         <Command.Item value="cambiar tema modo oscuro claro" onSelect={() => { alternar(); setOpen(false); }} className={itemCls}>
                           {oscuro ? <Sun /> : <Moon />}{oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                         </Command.Item>
-                        <Command.Item value="cambiar contrasena clave" onSelect={() => ir('/cambiar-password')} className={itemCls}><BookOpen />Cambiar contraseña</Command.Item>
-                        <Command.Item value="salir cerrar sesion" onSelect={async () => { setOpen(false); invalidarBusqueda(); await logout(); nav('/login'); }} className={itemCls}>
-                          <LogOut />Cerrar sesión{me ? ` (${me.nombre})` : ''}
-                        </Command.Item>
+                        {me && <Command.Item value="cambiar contrasena clave" onSelect={() => ir('/cambiar-password')} className={itemCls}><BookOpen />Cambiar contraseña</Command.Item>}
+                        {me ? <Command.Item value="salir cerrar sesion" onSelect={async () => { setOpen(false); invalidarBusqueda(); await logout(); nav('/login'); }} className={itemCls}>
+                          <LogOut />Cerrar sesión ({me.nombre})
+                        </Command.Item> : <Command.Item value="ingresar iniciar sesion login" onSelect={() => ir('/login')} className={itemCls}><LogIn />Ingresar</Command.Item>}
                       </Command.Group>
                     </Command.List>
                     <footer className="flex items-center gap-4 border-t bg-muted/40 px-4 py-2 text-[0.7rem] text-muted-foreground">

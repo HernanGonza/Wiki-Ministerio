@@ -35,10 +35,11 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/login" element={<Login />} />
+        {/* Lectura pública: la API decide qué se ve (lo restringido solo lo ven los admins). */}
+        <Route path="/" element={<Portada />} />
+        <Route path="/ministerio" element={<Navigate to="/" replace />} />
         <Route element={<RequireAuth />}>
           <Route path="/cambiar-password" element={<CambiarPassword />} />
-          <Route path="/" element={<Portada />} />
-          <Route path="/ministerio" element={<Navigate to="/" replace />} />
           <Route path="/auditoria" element={<SoloAdmins><Auditoria /></SoloAdmins>} />
 
           <Route path="/admin" element={<SoloAdmins><AdminHome /></SoloAdmins>} />
@@ -54,14 +55,12 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="/:espacio" element={<RequireSpaceRole min="general" />}>
-            <Route element={<SpaceLayout />}>
-              <Route index element={<Espacio />} />
-              <Route path="s/:seccion/:pagina?" element={<Seccion />} />
-              <Route path="sistemas" element={<Sistemas />} />
-              <Route path="anuncios" element={<Anuncios />} />
-            </Route>
-          </Route>
+        </Route>
+        <Route path="/:espacio" element={<SpaceLayout />}>
+          <Route index element={<Espacio />} />
+          <Route path="s/:seccion/:pagina?" element={<Seccion />} />
+          <Route path="sistemas" element={<Sistemas />} />
+          <Route path="anuncios" element={<Anuncios />} />
         </Route>
         <Route path="*" element={<NoEncontrado />} />
       </Route>

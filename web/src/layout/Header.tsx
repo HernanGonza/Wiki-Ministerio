@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { History, KeyRound, LogOut, Moon, Search, Shield, Sun } from 'lucide-react';
+import { History, KeyRound, LogIn, LogOut, Moon, Search, Shield, Sun } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { Logo } from '@/ui/brand';
 import { useTheme } from '@/ui/theme';
@@ -34,10 +34,9 @@ export function Header() {
         <Link to="/" aria-label="Wiki Ecología Misiones, inicio" className="mr-1 rounded-xl transition hover:opacity-85">
           <Logo compacto />
         </Link>
-        {me && <div className="hidden md:block"><SpaceSwitcher /></div>}
+        <div className="hidden md:block"><SpaceSwitcher /></div>
         <div className="ml-auto flex items-center gap-1.5">
-          {me && (
-            <button
+          <button
               onClick={() => setOpen(true)}
               className="group flex h-10 items-center gap-2.5 rounded-full border bg-card/70 pl-4 pr-2 text-sm text-muted-foreground shadow-xs transition hover:border-primary/50 hover:text-foreground sm:w-64"
               aria-label="Buscar (Ctrl+K)"
@@ -47,11 +46,13 @@ export function Header() {
               <kbd className="hidden rounded-md border bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold sm:block">Ctrl K</kbd>
               <span className="sm:hidden size-6" />
             </button>
-          )}
           {me && esAdminDeAlgo && (
             <Button asChild variant="ghost" size="sm" className="hidden lg:inline-flex"><Link to="/admin"><Shield />Administración</Link></Button>
           )}
           <ThemeToggle />
+          {!me && (
+            <Button asChild size="sm" variant="outline"><Link to="/login"><LogIn />Ingresar</Link></Button>
+          )}
           {me && (
             <Dropdown>
               <DropdownTrigger asChild>

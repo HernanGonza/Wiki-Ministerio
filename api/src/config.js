@@ -23,6 +23,11 @@ export const config = {
   sessionSecret: required('SESSION_SECRET'),
   cookieSecure: process.env.COOKIE_SECURE === 'true',
   sessionIdleHours: 12,
+  // Ingreso único desde el portal. Sin PORTAL_JWT_SECRET queda desactivado.
+  portalJwtSecret: process.env.PORTAL_JWT_SECRET || null,
+  portalJwtIssuer: process.env.PORTAL_JWT_ISSUER || 'portal-mernr',
+  portalJwtAudience: process.env.PORTAL_JWT_AUDIENCE || 'wiki',
+  portalUrl: process.env.PORTAL_URL || null,
   vaultwardenUrl: process.env.VAULTWARDEN_URL || null,
   adminEmail: process.env.ADMIN_EMAIL || null,
   adminPasswordInicial: process.env.ADMIN_PASSWORD_INICIAL || null,
@@ -31,6 +36,9 @@ export const config = {
 
 if (config.sessionSecret.length < 32) {
   throw new Error('SESSION_SECRET debe tener al menos 32 caracteres');
+}
+if (config.portalJwtSecret && config.portalJwtSecret.length < 32) {
+  throw new Error('PORTAL_JWT_SECRET debe tener al menos 32 caracteres');
 }
 if (!IDENT.test(config.db.appUser)) {
   throw new Error('APP_DB_USER solo admite minúsculas, números y guion bajo');

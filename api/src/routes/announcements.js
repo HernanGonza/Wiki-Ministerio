@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db.js';
 import { h, parse } from '../http.js';
-import { resolveSpace } from '../auth/access.js';
+import { resolveSpaceRead } from '../auth/access.js';
 
 export const announcementsRouter = Router();
 
@@ -18,7 +18,7 @@ const querySchema = z.object({
  */
 announcementsRouter.get('/', h(async (req, res) => {
   const q = parse(querySchema, req.query);
-  const { space } = await resolveSpace(req.user, q.space);
+  const { space } = await resolveSpaceRead(req.user, q.space);
   const where = space.slug === 'ministerio' ? 'a.space_id IS NULL' : '(a.space_id = $3 OR a.space_id IS NULL)';
   const params = space.slug === 'ministerio' ? [q.limit, q.offset] : [q.limit, q.offset, space.id];
   const { rows } = await query(

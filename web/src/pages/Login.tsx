@@ -3,7 +3,8 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
-import { errMsg } from '@/lib';
+import { api } from '@/api/client';
+import { errMsg, useAsync } from '@/lib';
 import { Flor, Logo, PatronFlores } from '@/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
@@ -11,14 +12,15 @@ import { Alert } from '@/components/ui/page';
 import { invalidarBusqueda } from '@/layout/CommandPalette';
 
 export function Login() {
-  const { me, login, loading } = useAuth();
+  const { me, login, loading, ssoError } = useAuth();
+  const cfg = useAsync(() => api.get<{ sso: boolean; portal_url: string | null }>('/auth/config'), []);
   const nav = useNavigate();
   const loc = useLocation();
   const from = (loc.state as { from?: string } | null)?.from ?? '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [ver, setVer] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(ssoError);
   const [busy, setBusy] = useState(false);
   const [sacudir, setSacudir] = useState(0);
 
@@ -74,6 +76,9 @@ export function Login() {
               )}
             </Field>
             {error && <Alert>{error}</Alert>}
+            {cfg.data?.portal_url && (
+              <Button asChild variant="outline" size="lg" className="w-full"><a href={cfg.data.portal_url}>Ingresar con el portal del Ministerio</a></Button>
+            )}
             <Button type="submit" size="lg" loading={busy} className="mt-1 w-full"><LogIn />Ingresar</Button>
           </motion.form>
         </motion.div>

@@ -69,7 +69,7 @@ async function loginYCambiar(c, email, tempPassword, nuevaPassword) {
   const r = await c.post('/auth/login', { email, password: tempPassword });
   if (r.status !== 200) return r;
   if (r.data.must_change_password) {
-    const bloqueado = await c.get('/spaces');
+    const bloqueado = await c.get('/audit');
     check(`${c.nombre}: con cambio de clave pendiente la API bloquea el resto (403 must_change_password)`,
       bloqueado.status === 403 && bloqueado.data?.error === 'must_change_password', JSON.stringify(bloqueado.data));
     const ch = await c.post('/auth/change-password', { actual: tempPassword, nueva: nuevaPassword });
@@ -89,7 +89,10 @@ async function main() {
   section('1. Salud y sesión');
   const health = await anon.get('/health');
   check('GET /api/health = 200', health.status === 200);
-  check('sin sesión, /api/spaces = 401', (await anon.get('/spaces')).status === 401);
+  const pubSpaces = await anon.get('/spaces');
+  check('sin sesión, /api/spaces = 200 (lectura pública)', pubSpaces.status === 200 && pubSpaces.data?.every((s) => s.rol === 'publico'));
+  check('sin sesión, /api/audit = 401', (await anon.get('/audit')).status === 401);
+  check('sin sesión, no se puede escribir (POST /api/spaces)', (await anon.post('/spaces', {})).status !== 200);
   check('sin sesión, /api/admin/users = 401', (await anon.get('/admin/users')).status === 401);
 
   section('2. Login fallido y respuesta genérica');
@@ -108,7 +111,7 @@ async function main() {
   check('la respuesta no contiene el hash de la contraseña', !/password_hash|argon2/.test(JSON.stringify(r.data)));
   let adminPassword = ADMIN_PASSWORD;
   if (r.data.must_change_password) {
-    check('con cambio pendiente, /api/spaces = 403 must_change_password', (await admin.get('/spaces')).data?.error === 'must_change_password');
+    check('con cambio pendiente, /api/audit = 403 must_change_password', (await admin.get('/audit')).data?.error === 'must_change_password');
     if (!ADMIN_NEW_PASSWORD) throw new Error('El admin debe cambiar la contraseña: definir ADMIN_NEW_PASSWORD');
     const ch = await admin.post('/auth/change-password', { actual: ADMIN_PASSWORD, nueva: ADMIN_NEW_PASSWORD });
     check('el admin cambia su contraseña', ch.status === 204, JSON.stringify(ch.data));
@@ -173,20 +176,25 @@ async function main() {
   check('gestión de usuarios = 403', (await gen.get('/admin/users')).status === 403);
   check('crear espacios = 403', (await gen.post('/admin/spaces', { slug: 'prueba', nombre: 'x' })).status === 403);
 
-  section('7. Usuario sin rol en OT: 404 en todo el espacio');
-  for (const p of [
-    `/spaces/${OT}`, `/spaces/${OT}/sections`, `/spaces/${OT}/sections/procedimientos/pages/indice`,
-    `/announcements?space=${OT}`, `/systems/status?space=${OT}`, `/admin/spaces/${OT}/credential-refs`,
-    `/admin/spaces/${OT}/announcements`,
-  ]) {
-    const x = await sin.get(p);
-    check(`GET ${p} = 404`, x.status === 404, `status ${x.status}`);
+  section('7. Sin rol en OT y sin sesión: lectura pública, nada restringido ni administrativo');
+  for (const [c, nombre] of [[sin, 'sin rol'], [anon, 'anónimo']]) {
+    for (const p of [`/spaces/${OT}`, `/spaces/${OT}/sections`, `/announcements?space=${OT}`, `/systems/status?space=${OT}`]) {
+      const x = await c.get(p);
+      check(`${nombre}: GET ${p} = 200`, x.status === 200, `status ${x.status}`);
+    }
+    const arbol = await c.get(`/spaces/${OT}/sections`);
+    check(`${nombre}: no ve secciones restringidas`, !flat(arbol.data ?? []).some((n) => n.acceso === 'restringido' || n.slug === 'accesos'));
+    check(`${nombre}: página de sección restringida = 404`, (await c.get(`/spaces/${OT}/sections/accesos/pages/indice`)).status === 404);
+    for (const p of [`/admin/spaces/${OT}/credential-refs`, `/admin/spaces/${OT}/announcements`]) {
+      const x = await c.get(p);
+      check(`${nombre}: GET ${p} = ${c === anon ? 401 : 404}`, x.status === (c === anon ? 401 : 404), `status ${x.status}`);
+    }
   }
   const sSpaces = await sin.get('/spaces');
-  check('/api/spaces solo lista ministerio', sSpaces.data?.length === 1 && sSpaces.data[0].slug === 'ministerio');
-  const exist = await sin.get(`/spaces/no-existe-${stamp}`);
-  const noRol = await sin.get(`/spaces/${OT}`);
-  check('mismo 404 y mensaje para espacio inexistente que para espacio sin rol', exist.status === 404 && noRol.status === 404 && exist.data?.message === noRol.data?.message);
+  check('/api/spaces lista los espacios activos con rol publico para el usuario sin rol', sSpaces.data?.some((s) => s.slug === OT && s.rol === 'publico') && sSpaces.data?.find((s) => s.slug === 'ministerio')?.rol === 'general');
+  const anonSys = await anon.get(`/systems/status?space=${OT}`);
+  check('anónimo: los sistemas no exponen ip/puerto/vm', (anonSys.data ?? []).every((x) => !('ip' in x) && !('puerto' in x) && !('vm' in x)));
+  check('espacio inexistente = 404', (await anon.get(`/spaces/no-existe-${stamp}`)).status === 404);
 
   section('8. Anuncios: del espacio y transversal');
   const titDir = `Anuncio del director ${stamp}`;
@@ -302,11 +310,41 @@ async function main() {
   }
   if (cr.data?.id) await admin.del(`/admin/spaces/${OT}/credential-refs/${cr.data.id}`);
   for (const u of [uDir, uGen, uSin]) await admin.del(`/admin/users/${u.id}`);
-  const tras = await gen.get('/spaces');
+  const tras = await gen.get('/auth/me');
   check('usuario desactivado: su sesión deja de valer (401)', tras.status === 401);
   const out = await admin.post('/auth/logout', {});
   check('logout = 204', out.status === 204);
-  check('después del logout la sesión no sirve (401)', (await admin.get('/spaces')).status === 401);
+  check('después del logout la sesión no sirve (401)', (await admin.get('/auth/me')).status === 401);
+
+  section('12b. Ingreso único (JWT del portal)');
+  const SECRET = process.env.PORTAL_JWT_SECRET;
+  if (!SECRET) {
+    console.log('  (omitido: definir PORTAL_JWT_SECRET igual al de la API para probar el SSO)');
+  } else {
+    const { createHmac } = await import('node:crypto');
+    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+    const firmar = (claims, { secret = SECRET, alg = 'HS256' } = {}) => {
+      const body = `${b64({ alg, typ: 'JWT' })}.${b64(claims)}`;
+      return `${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
+    };
+    const t = Math.floor(Date.now() / 1000);
+    const ok = (email, extra = {}) => ({ iss: process.env.PORTAL_JWT_ISSUER || 'portal-mernr', aud: process.env.PORTAL_JWT_AUDIENCE || 'wiki', email, iat: t, exp: t + 60, jti: `${stamp}-${Math.random()}`, ...extra });
+    const sso = new Client('sso');
+    const bueno = await sso.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL)) });
+    check('SSO con JWT válido y email existente = 200', bueno.status === 200 && bueno.data?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase(), JSON.stringify(bueno.data));
+    check('la sesión SSO sirve (auth/me = 200)', (await sso.get('/auth/me')).status === 200);
+    const jti = `reuso-${stamp}`;
+    const t1 = firmar(ok(ADMIN_EMAIL, { jti }));
+    await new Client('x').post('/auth/sso', { token: t1 });
+    check('un JWT no se puede reutilizar', (await new Client('x2').post('/auth/sso', { token: t1 })).status === 401);
+    check('firma incorrecta = 401', (await anon.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL), { secret: 'otro-secreto-'.repeat(4) }) })).status === 401);
+    check('alg=none = 401', (await anon.post('/auth/sso', { token: `${b64({ alg: 'none' })}.${b64(ok(ADMIN_EMAIL))}.` })).status === 401);
+    check('token vencido = 401', (await anon.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL, { iat: t - 400, exp: t - 300 })) })).status === 401);
+    check('token con vida > 5 min = 401', (await anon.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL, { exp: t + 3600 })) })).status === 401);
+    check('audiencia incorrecta = 401', (await anon.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL, { aud: 'otro-sistema' })) })).status === 401);
+    const sinAlta = await anon.post('/auth/sso', { token: firmar(ok(`no-existe-${stamp}@example.com`)) });
+    check('email que no existe en la wiki = 403 (no se crea el usuario)', sinAlta.status === 403 && sinAlta.data?.error === 'sso_user_not_found');
+  }
 
   section('13. Rate limit de login (5 fallos por IP / 15 min)');
   let primero429 = null;

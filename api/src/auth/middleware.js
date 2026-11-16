@@ -30,8 +30,27 @@ export async function requireAuth(req, res, next) {
     req.user = user;
     req.sessionToken = token;
     res.cookie(COOKIE_NAME, token, cookieOptions()); // renueva la ventana de inactividad
-    if (user.must_change_password && !ALLOWED_WHILE_MUST_CHANGE.has(req.baseUrl + req.path)) {
+    if (user.must_change_password && !user.via_sso && !ALLOWED_WHILE_MUST_CHANGE.has(req.baseUrl + req.path)) {
       throw new AppError(403, 'must_change_password', 'Debe cambiar la contraseña');
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Sesión opcional (lectura pública): con cookie válida deja req.user; sin ella, req.user = null.
+ * Un visitante anónimo nunca recibe error 401 acá: las rutas deciden qué puede ver.
+ */
+export async function optionalAuth(req, res, next) {
+  try {
+    const token = parseCookies(req.headers.cookie)[COOKIE_NAME];
+    const user = token ? await resolveSession(token) : null;
+    req.user = user;
+    if (user) {
+      req.sessionToken = token;
+      res.cookie(COOKIE_NAME, token, cookieOptions());
     }
     next();
   } catch (err) {

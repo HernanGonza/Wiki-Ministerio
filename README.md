@@ -67,6 +67,26 @@ El arranque de `api` ejecuta `migrate.js` → `seed.js` → `server.js`. Las mig
 2. La Wiki exige cambiar la contraseña (mínimo 12 caracteres).
 3. Verificar que se ve el espacio *Ordenamiento Territorial*.
 
+## Acceso público e ingreso único (portal)
+
+**Lectura pública:** cualquiera, sin sesión, puede leer los espacios activos, sus páginas, anuncios y archivos.
+Lo marcado como `restringido` (secciones, páginas, archivos) solo lo ven los administradores del espacio
+(la marca `acceso` que ya existía). Sin sesión no se ven: referencias de credenciales, auditoría, administración,
+ni los datos de infraestructura de los sistemas (IP, puerto, VM). Todo lo que escribe exige sesión.
+
+**Ingreso único:** el portal del Ministerio emite un JWT y redirige a la wiki; no hay que loguearse de nuevo.
+El login con contraseña sigue como respaldo.
+
+- Portal → wiki: redirigir a `https://<host>/wiki/#sso=<JWT>` (en el **fragmento `#`**, no `?token=`: así el token
+  no queda en los logs de nginx ni en el Referer).
+- JWT: HS256, secreto compartido `PORTAL_JWT_SECRET` (≥ 32 caracteres, igual en el portal y en la wiki).
+  Claims obligatorios: `email`, `iss` (= `PORTAL_JWT_ISSUER`, por defecto `portal-mernr`), `aud` (= `PORTAL_JWT_AUDIENCE`,
+  por defecto `wiki`), `iat`, `exp` (vida máxima 5 min; recomendado ~60 s) y `jti` (único; la wiki lo acepta una sola vez).
+- La wiki busca el email en `users`. Si existe y está activo, abre su sesión local con sus roles por espacio.
+  Si no existe: 403, **no se crea el usuario** (alta por un admin global). Las sesiones SSO no exigen cambiar la contraseña local.
+- `PORTAL_URL` (opcional) agrega el botón "Ingresar con el portal del Ministerio" en `/login`.
+- Sin `PORTAL_JWT_SECRET` el SSO queda desactivado.
+
 ## Usuarios y roles por espacio
 
 Desde **Administración → Usuarios y roles** (solo administrador global):

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { config } from '../config.js';
 import { query } from '../db.js';
 import { h, parse, badRequest, AppError } from '../http.js';
+import { verificarJwtPortal } from '../auth/sso.js';
 import { audit } from '../services/audit.js';
 import {
   COOKIE_NAME, cookieOptions, createSession, deleteSession, hashToken,
@@ -98,6 +99,47 @@ publicAuth.post('/login', loginLimiter, h(async (req, res) => {
   req.user = user;
   await audit(req, 'login_ok', 'sesion');
   res.cookie(COOKIE_NAME, token, cookieOptions());
+  res.json(await buildMe(user));
+}));
+
+/** Datos para que la pantalla de ingreso sepa si hay portal. */
+publicAuth.get('/config', h(async (_req, res) => {
+  res.json({ sso: Boolean(config.portalJwtSecret), portal_url: config.portalUrl });
+}));
+
+const ssoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ error: 'too_many_requests', message: 'Demasiados intentos. Probar de nuevo más tarde.' }),
+});
+
+/**
+ * Ingreso único: el portal emite un JWT (HS256, vida corta) con el email. Si el email existe
+ * y está activo en la wiki, se abre una sesión local. No crea usuarios.
+ */
+publicAuth.post('/sso', ssoLimiter, h(async (req, res) => {
+  if (!req.is('application/json')) throw new AppError(415, 'unsupported_media_type', 'Se requiere Content-Type: application/json');
+  const { token } = parse(z.object({ token: z.string().min(1).max(4096) }), req.body);
+  const email = verificarJwtPortal(token);
+  const { rows } = await query(
+    `SELECT id, email, nombre, activo, must_change_password, es_admin_global
+       FROM users WHERE lower(email) = lower($1)`,
+    [email],
+  );
+  const user = rows[0];
+  if (!user || !user.activo) {
+    req.auditUserId = user?.id ?? null;
+    await audit(req, 'sso_rechazado', 'sesion');
+    throw new AppError(403, 'sso_user_not_found', 'Tu cuenta no tiene acceso a la wiki. Pedí el alta al administrador.');
+  }
+  const session = await createSession(user.id, req.ip, req.get('user-agent'), true);
+  await query('UPDATE users SET last_login_at = now() WHERE id = $1', [user.id]);
+  req.user = user;
+  await audit(req, 'login_sso', 'sesion');
+  res.cookie(COOKIE_NAME, session, cookieOptions());
   res.json(await buildMe(user));
 }));
 

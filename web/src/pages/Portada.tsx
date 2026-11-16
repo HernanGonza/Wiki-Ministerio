@@ -40,7 +40,7 @@ export function Portada() {
 
       <SectionTitle>Espacios</SectionTitle>
       {espacios.loading ? <Cargando variante="tarjetas" /> : <ErrorMsg msg={espacios.error} />}
-      {!espacios.loading && !lista.length && <Empty>Todavía no hay espacios asignados a este usuario.</Empty>}
+      {!espacios.loading && !lista.length && <Empty>Todavía no hay espacios.</Empty>}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {lista.map((s, i) => <Reveal key={s.id} delay={i * 0.07}><SpaceCard s={s} /></Reveal>)}
       </div>

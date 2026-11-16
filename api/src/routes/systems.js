@@ -2,13 +2,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db.js';
 import { h, parse, notFound } from '../http.js';
-import { resolveSpace } from '../auth/access.js';
+import { resolveSpaceRead } from '../auth/access.js';
 
 export const systemsRouter = Router();
 
 /** Estado actual de los sistemas activos del espacio + los transversales. */
 systemsRouter.get('/status', h(async (req, res) => {
-  const { space } = await resolveSpace(req.user, parse(z.string().trim().min(1).max(80), req.query.space));
+  const { space } = await resolveSpaceRead(req.user, parse(z.string().trim().min(1).max(80), req.query.space));
   const where = space.slug === 'ministerio' ? 's.space_id IS NULL' : '(s.space_id = $1 OR s.space_id IS NULL)';
   const { rows } = await query(
     `SELECT s.id, s.nombre, s.slug, s.url, s.ip, s.puerto, s.vm, s.descripcion, s.orden,
@@ -28,7 +28,8 @@ systemsRouter.get('/status', h(async (req, res) => {
       ORDER BY (s.space_id IS NULL) DESC, s.orden, s.nombre`,
     space.slug === 'ministerio' ? [] : [space.id],
   );
-  res.json(rows);
+  // Sin sesión no se exponen datos de infraestructura (IP, puerto, VM).
+  res.json(req.user ? rows : rows.map(({ ip, puerto, vm, ...pub }) => pub));
 }));
 
 const historySchema = z.object({ horas: z.coerce.number().int().min(1).max(720).default(24) });
@@ -38,8 +39,8 @@ systemsRouter.get('/:id/history', h(async (req, res) => {
   const { horas } = parse(historySchema, req.query);
   const sys = await query('SELECT s.id, sp.slug AS space_slug FROM systems s LEFT JOIN spaces sp ON sp.id = s.space_id WHERE s.id = $1', [id]);
   if (!sys.rows[0]) throw notFound();
-  // Sistema de espacio: exige acceso al espacio (404 si no tiene rol). Transversal: cualquiera.
-  if (sys.rows[0].space_slug) await resolveSpace(req.user, sys.rows[0].space_slug);
+  // Espacio inexistente o inactivo → 404. La lectura es pública.
+  if (sys.rows[0].space_slug) await resolveSpaceRead(req.user, sys.rows[0].space_slug);
   const { rows } = await query(
     `SELECT checked_at, estado, latencia_ms, codigo_http
        FROM system_checks

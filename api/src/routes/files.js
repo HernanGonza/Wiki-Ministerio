@@ -1,12 +1,12 @@
 // Subida y descarga de archivos.
 //  - POST /api/admin/spaces/:slug/files  (admin del espacio) cuerpo = binario crudo
-//  - GET  /api/files/:id                 (sesión; respeta el acceso restringido)
+//  - GET  /api/files/:id                 (lectura pública; respeta el acceso restringido)
 import express, { Router } from 'express';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { query } from '../db.js';
 import { h, notFound, badRequest, parse } from '../http.js';
-import { requireSpaceRole, resolveSpace, hasRole } from '../auth/access.js';
+import { requireSpaceRole, resolveSpaceRead, hasRole } from '../auth/access.js';
 import { audit } from '../services/audit.js';
 import { guardarArchivo, limpiarNombre, rutaArchivo, MAX_FILE, TIPOS } from '../services/files.js';
 import { uuid } from '../schemas.js';
@@ -37,7 +37,7 @@ filesPublic.get('/:id', h(async (req, res) => {
   );
   const f = rows[0];
   if (!f) throw notFound();
-  const { rol } = await resolveSpace(req.user, f.slug); // sin rol en el espacio → 404
+  const { rol } = await resolveSpaceRead(req.user, f.slug); // lectura pública; restringido solo admins
   if (f.acceso === 'restringido' && !hasRole(rol, 'admin_espacio')) throw notFound();
 
   const etag = `"${createHash('sha1').update(f.sha256).digest('hex')}"`;
