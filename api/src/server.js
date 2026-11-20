@@ -13,12 +13,15 @@ import { adminSpace } from './routes/admin-space.js';
 import { adminGlobal } from './routes/admin-global.js';
 import { auditRouter } from './routes/audit.js';
 import { filesAdmin, filesPublic } from './routes/files.js';
+import { crearRouterSso } from './sso/index.js';
 import { startMonitor } from './services/monitor.js';
 import { startRetention } from './services/retention.js';
 
 const app = express();
 app.disable('x-powered-by');
-// Detrás de nginx (un solo salto). nginx pisa X-Forwarded-For con la IP real del cliente.
+// Detrás de dos nginx (ecodatos -> wiki-web -> api), pero un solo salto cuenta: wiki-web recupera la IP real
+// del cliente (X-Real-IP de ecodatos, set_real_ip_from) y PISA X-Forwarded-For con ella. Express toma la
+// última entrada de X-Forwarded-For (trust proxy = 1), que es la que puso wiki-web, no la del cliente.
 app.set('trust proxy', 1);
 app.use(helmet());
 app.use(express.json({ limit: '2mb' }));
@@ -32,6 +35,9 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// Ingreso único (RS256) desde el portal: rutas públicas en la raíz, fuera de /api. Sin SSO_JWKS_URL: 404.
+app.use(crearRouterSso());
 
 app.get('/api/health', h(async (_req, res) => {
   await query('SELECT 1');

@@ -1,0 +1,84 @@
+{
+  "_comentario": "Todo es SOLO DE PRUEBA. Reloj de las pruebas: ahora = AHORA + 10 s. Esperado: verificar() devuelve ok o el motivo.",
+  "ahora": 1790000010,
+  "iss": "https://portal.prueba.invalid",
+  "aud_esperada": "sistema-prueba",
+  "jwks": "jwks.PRUEBA.json",
+  "casos": {
+    "valido_login": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMDYwLCJqdGkiOiJqdGktdmFsaWRvLTAwMDEifQ.DOgNsxkYz8d8Q19wNIESx0HiAI07KFrwzQarQLxhKNIcjMZo2upu9KM7GO_CN1_hYdizW5dNglUKih7jIuXkDx5eawtWzfozKHm6wtoSWgffnM77veo9t-YE_E54nUW3wbKcCsPpqZToYw3yKnJT3o0wrCC_we7kGVwVFubGD-FOsoiDH7Y5umaz0DZgwIvKZQUf4YrvVfreG2bA_Ad-FG7OBWTK-0BkRAZv6ATMdZL43drg3_Abg86_uKVlb9S_CFLMNf8CEwWWifxlN0-GGtA0j1ohkhnP-_J5JMVIL_hW2FFTcoX15XwFCk95hCa5gFYnrbvO_yPX4M0HgsuU2A",
+      "use_esperado": "login",
+      "esperado": "ok"
+    },
+    "valido_acceso": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImFjY2VzbyIsImlzcyI6Imh0dHBzOi8vcG9ydGFsLnBydWViYS5pbnZhbGlkIiwiYXVkIjoic2lzdGVtYS1wcnVlYmEiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDA2MCwianRpIjoianRpLWFjY2Vzby0wMDAxIn0.L8EecLlvz9j_ZXoRdO3-B_HQFHe2Mjs9e-fdC8E3kNj-4X5aTQpwiAsRcthbFBHdzy_1GaMNjfjsWRmX0UXT0Cx-hzVi5kise22XKTJKGa2IUPdOiapKlbvAn5eM45GvUtKOKiosJeQ0FYSSe9s2F8x7epDJ5IT1Al9OMBgC3WvYoi787WdJA7EcmMaFCdnF7IvSxCh5pRQImwlMARySg9JZzOba5vxwHxDZm7-1u9f9wOZmXCufbRJXHOcZCfp4AOH5KUi7OIqDZexEOLCZBF9f7B2Tmw9XXUbeEcntFn4iIg5sI1EGL5B4kJAo0f3z6avYSuzZRx6SK-waoRDbvQ",
+      "use_esperado": "acceso",
+      "esperado": "ok"
+    },
+    "vencido": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc4OTk5NjQwMCwiZXhwIjoxNzg5OTk2NDYwLCJqdGkiOiJqdGktdmVuYy0wMDAxIn0.hzWmH9gpzMk7CzbrMsVKCjuh0tpIKtqqOE3GLgphG8GClM71OrgrG1Cp0DinSFWDj2ILE4d7kg9X_wcpBldCyNSfT2wiDE6bp4Y3BTtI9JVE8ARQN_m60Lqah-ZBkxaz20u2IdaL4YnKRuthrZlnYEi2_1GzbFpxw7873Ry-FOFExY-rZ3AO2THkRc4M4kxYuyXUlGVWV1jH73fUgyRLmTPwzMrXxq012aSSjUt_vSlqhd4KdtBfD9Ypp0S-ZR2FrcOobmv7fI7p8WSfxKZpcPDud_r1qJnz5AdvbLc8Or3mACJ0Dw_WfNwnkK-Vpx173_I1RIZMYS6e6cKfvmvTXA",
+      "use_esperado": "login",
+      "esperado": "exp"
+    },
+    "dentro_tolerancia": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc4OTk5OTkwMCwiZXhwIjoxNzg5OTk5OTgwLCJqdGkiOiJqdGktdG9sLTAwMDEifQ.fHmqAnnPQhwTarS1Q-Zn0cvwTloW53JtHjpPSbAgz_0cdpBFwGU8ebT7GD9FN0dvXqXNb8Hx9hK8mCb1KYyDisbzhEGKiSrEAvyVylVGxD7q6ZdB-JWzyskUd5CaFRw_dQzXdoUjqEsIoOg0_Qm3aMQbEjyTLRgAlSVUyPEw4M9eBv0nBozjCV25bP1BkyaxmnKAce8jDaAu_V_NWuPFX_r5kqSkbLU26g8LVHpYS8Fpa3DU2RaYtH9A29lxwxpRs0QdTq4_l-foHgvTVrBeoQkGImrTg9N2Na8bHPDP7S2sTofZxJPh4V0tIN4SvnEUXvB85tbsZe0b3vWlMDkSfQ",
+      "use_esperado": "login",
+      "esperado": "ok",
+      "nota": "vencido hace 30 s: la tolerancia es 60 s"
+    },
+    "iss_ajeno": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9vdHJvLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMDYwLCJqdGkiOiJqdGktaXNzLTAwMDEifQ.NH5fPjqc8hPbGbR14uENDbB8vbH1yHyQlzG1PhVTMNUymDJjOCqpeMp-FiKUSUA9Q0UtwyN1jumzJ-5PKRpQSUF43CO_VrySW2OKhXgPqDBNMdo_N9LeILMWRrEROyo9rlSP-e2qdt33vgbGIXvyoKKiX0ZO0_6FH4qlWsZRsA8DCA-JAIInV2Y5lb38vIOU34Uw5q3caCwhLjn_K8kRdUCkoLiSvMoGPJiWe5XVL6AD8jBVwhA3KGFVI3NEOELMhExGzvcBmEes5gVFz7seJBYz1TxTOE8dTk9aeTS7lQ4wTY1FjRZSadzhfsaNuLOS2bHtW0RYuZjhvxVRJ-NL0g",
+      "use_esperado": "login",
+      "esperado": "iss"
+    },
+    "aud_ajeno": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJvdHJvLXNpc3RlbWEiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDA2MCwianRpIjoianRpLWF1ZC0wMDAxIn0.q8H5YSNRFdCGSiYiScATUs7806-rHUsodYWDVFRPAilGonC4tgwyRRdXNYpm8dfV5he_RTdnlxDwyfSy3QaO297WAk_LoXbBuoyThnL2T0OykSgp9aB34ipVOepYtXh3MyzN-523D8ingzx0HcQbUHedsJyWGIyWCRmcHpeJ-vHcjpPWY2Dmebnzfj6FebXKYzt554bIod_d7jKaZWb34DJzCRbGZ5wF3X60jSudtxNaIw8UZ8Xs6a2DuBuGWna2Jj97-d9hQLAsRuyMbi4sMWVQcFjMJzV6WN3eB5a7BSJ6UxXtycXt-y0e3rJFGguh84XBOuBYXGy5pqpz_78Grw",
+      "use_esperado": "login",
+      "esperado": "aud"
+    },
+    "firma_ajena": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMDYwLCJqdGkiOiJqdGktZmlybWEtMDAwMSJ9.OJS2zNpM0mcDSLKG9r7z8gqomoKxyV7DJf2o3O1SZ4FhXXjlpSrDBaHrNqQQQ6isEYU62eBK1rmI-UsvULIk9Va156y7RyLmSFL4HKGyYFovjYle-7_OEGPqKfoPSorbwffuZTbKpCOzfF8ItzkAqkE_M81y5aYCyp_OtlIGLKdipVRMuaoQ8PZTI_qdMNVvltMSfEarkoFdOPOlNVsohKBRVRUcPRCUZnudqmUEbpmdWoKjXG_4F5LzTVNu9JMBxJAACeTuVXS9TleFW4pkF_Q23Iv4kKZsIGwUDN9LWl1-ZDNvzW0-7QtlVpwY-nFvsnE8rn4Ui-oizn-bieB0Tw",
+      "use_esperado": "login",
+      "esperado": "firma",
+      "nota": "mismo kid PRUEBA-1 pero firmada con otra clave"
+    },
+    "kid_desconocido": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS1ERVNDT05PQ0lETyIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMDYwLCJqdGkiOiJqdGkta2lkLTAwMDEifQ.hhPsI8CBMiq2IP0EPeodPYtX8drFUgCtxd0nlEwS8s6escNG-ekAHBJqvZpOJl7FcvmHbv3JxN5sRgYqYRivNm0QMjFLISJfepfLZlAynDlJ4Nh6GpOBMJG7kVUymKB-yk7wMY50MWszdekAcXruXXUbsN4m_4wfgty6dLvTAy0nCbxK2gbNCCspoJuRqedSQoJaD2wRKGHDIIlI9opP6c4N4B96i5rxwa03bV6my7MjhVbuv3MEPc6z5-XjQ_PbiZ5zCFJLgsWdChXcFrpeHvUIoaeunMaROBync3eM_go9nitrrQcdlhkKxehTuwkOtjXx3qU7lGZSImZA_Kg87Q",
+      "use_esperado": "login",
+      "esperado": "firma",
+      "nota": "debe provocar un refresco del JWKS y luego fallar"
+    },
+    "use_cambiado": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImFjY2VzbyIsImlzcyI6Imh0dHBzOi8vcG9ydGFsLnBydWViYS5pbnZhbGlkIiwiYXVkIjoic2lzdGVtYS1wcnVlYmEiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDA2MCwianRpIjoianRpLXVzZS0wMDAxIn0.vYtkY8HGkfZaozUcu5tRvTqkTQHFpb51_uhGtvg7zP14KIz7AfrrQas9EXbX9m7wwGDstMMzWBT9NJf8EYkpQfFPmg8fN_8ooDJ0Pmeul7hA496Vo7VVlEpnVLNQfQEpdgmjzBTQ4Z2ai3qx7cDiVSSecOox3agYx0CGt5uknDy-UNlmD3scoBwqXIe7b3kw_nXIZgUXWgnD-KgdHY3ZziS_8sK6GZ1oFXAij3epWLgoIHHIlLNEClyeRtvcDYZ60kJ-zyW51Dddc593fSmHA9yQUJxje16Jd9NyZm0gOUluoN3RX_GxtNWf1EXa7v5IK_O_lGoOLDiqcK0o0gsq_w",
+      "use_esperado": "login",
+      "esperado": "use"
+    },
+    "alg_none": {
+      "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMDYwLCJqdGkiOiJqdGktbm9uZS0wMDAxIn0.",
+      "use_esperado": "login",
+      "esperado": "alg"
+    },
+    "hs256": {
+      "token": "eyJhbGciOiJIUzI1NiIsImtpZCI6IlBSVUVCQS0xIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMDYwLCJqdGkiOiJqdGktaHMtMDAwMSJ9.ahD-Q_ntxoePLrSQgfHgZdMkWuvoYmOaLsGWIVc2Dk4",
+      "use_esperado": "login",
+      "esperado": "alg"
+    },
+    "jti_repetido": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6ImFuYS5wZXJlekBlY29sb2dpYS50ZXN0IiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMDYwLCJqdGkiOiJqdGktcmVwZXRpZG8tMDAwMSJ9.YHBMaTuJ_hvYVSnwbKB2vuMLyCeQ-bqicIr97QDLEREM37RNoPhRwh8VbkgFL96m38vsUhkpPeZ1N-9im4Cmv9BMsMEjxEWFuFqGdcLQpsVtX3DxRa0BzlC0RVM5UmAiszDrLhG8wUjHykamMmLdzgkSO4sWGLmpSSiNK5O4O7_A6Xl_chAevaOGkrb893o0_r5vxLjKtT6mV18brjvMo0Oook-UHkpY1Ktwab9qUB1irzBTrdEoM_kNRylClFME9oj8agwcYVEg9PdMrlorTRn0zJ_rywt9AJjr5Dgstqc5AK74tKMJKhkrmiOI2tze8-X3uMtOdzd95AbfdTy-wA",
+      "use_esperado": "login",
+      "esperado": "ok_la_primera_jti_la_segunda",
+      "nota": "presentarlo DOS veces: la 1ª ok, la 2ª rechazada por jti. Solo aplica a use=login"
+    },
+    "email_mayusculas": {
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlBSVUVCQS0xIiwidHlwIjoiSldUIn0.eyJlbWFpbCI6IkFOQS5QZXJlekBFY29sb2dpYS5URVNUIiwibmFtZSI6IkFuYSBQw6lyZXoiLCJzdWIiOiJlbXAtMTAwMSIsInVzZSI6ImxvZ2luIiwiaXNzIjoiaHR0cHM6Ly9wb3J0YWwucHJ1ZWJhLmludmFsaWQiLCJhdWQiOiJzaXN0ZW1hLXBydWViYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMDYwLCJqdGkiOiJqdGktbWF5dXMtMDAwMSJ9.M8QY2IRbz-jGLPKqnQb_lm2GKCsw1RYxSA9QdNFB5bPaubu4jnCs11zx-_y8udBifIrUaZ4rzbs-RB7ng306Zv7ijfHdg-NSqYCAPUWgdmrVIQnq0BC5pf-jnFywyTbPGKeb-CMZBbz5Toj34-sMWuR164uJm3Hj8-L_jlm8qYLKTe6D8R4wgmIrTwMCVypWUvYC4faD2TIciVL0cMQz75FJWiagfuihJsy3NbZAnF82FwNxTmdVBchHucYuh2AItixylpZDAHLNC9yT5LqyEhCB4-7F4RyfVj_y3putU-MH9QcTQOE3rfkR3TyYDF2P9Vw8yMFkI4qbYJ_YOCfjRg",
+      "use_esperado": "login",
+      "esperado": "ok",
+      "nota": "la búsqueda debe normalizar a minúsculas"
+    },
+    "basura": {
+      "token": "esto.no.es-un-jwt",
+      "use_esperado": "login",
+      "esperado": "formato"
+    }
+  }
+}

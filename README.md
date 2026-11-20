@@ -21,7 +21,7 @@ vaultwarden/    convención de nombres de items
 `npm run dev` en la raíz: instala dependencias, crea `.env` con valores de desarrollo (la clave inicial del admin
 queda en `ADMIN_PASSWORD_INICIAL` y se cambia en el primer ingreso), levanta PostgreSQL 16 embebido (puerto 54329,
 datos en `.dev/`), aplica migraciones y seeds, y arranca la API y la web (http://127.0.0.1:5173).
-`npm run dev:reset` borra la base de desarrollo y los archivos subidos. `npm test` corre las pruebas de la API.
+`npm run dev:reset` borra la base de desarrollo y los archivos subidos. `npm test` corre las pruebas de la API y la integración del SSO (Postgres embebida).
 
 **Interfaz:** Tailwind v4 con tokens de la marca (Brandbook 2024), modo oscuro, Motion, cmdk (Ctrl+K), SweetAlert2
 para alertas y confirmaciones, sidebar colapsable (Ctrl+B). Tipografía Oak Sans (licencia OFL, en `web/public/fonts`).
@@ -74,18 +74,84 @@ Lo marcado como `restringido` (secciones, páginas, archivos) solo lo ven los ad
 (la marca `acceso` que ya existía). Sin sesión no se ven: referencias de credenciales, auditoría, administración,
 ni los datos de infraestructura de los sistemas (IP, puerto, VM). Todo lo que escribe exige sesión.
 
-**Ingreso único:** el portal del Ministerio emite un JWT y redirige a la wiki; no hay que loguearse de nuevo.
-El login con contraseña sigue como respaldo.
+**Ingreso único:** ver la sección «Ingreso único desde el portal» más abajo. El login con contraseña sigue como respaldo
+y `PORTAL_URL` (opcional) agrega el botón "Ingresar con el portal del Ministerio" en `/login`.
 
-- Portal → wiki: redirigir a `https://<host>/wiki/#sso=<JWT>` (en el **fragmento `#`**, no `?token=`: así el token
-  no queda en los logs de nginx ni en el Referer).
-- JWT: HS256, secreto compartido `PORTAL_JWT_SECRET` (≥ 32 caracteres, igual en el portal y en la wiki).
-  Claims obligatorios: `email`, `iss` (= `PORTAL_JWT_ISSUER`, por defecto `portal-mernr`), `aud` (= `PORTAL_JWT_AUDIENCE`,
-  por defecto `wiki`), `iat`, `exp` (vida máxima 5 min; recomendado ~60 s) y `jti` (único; la wiki lo acepta una sola vez).
-- La wiki busca el email en `users`. Si existe y está activo, abre su sesión local con sus roles por espacio.
-  Si no existe: 403, **no se crea el usuario** (alta por un admin global). Las sesiones SSO no exigen cambiar la contraseña local.
-- `PORTAL_URL` (opcional) agrega el botón "Ingresar con el portal del Ministerio" en `/login`.
-- Sin `PORTAL_JWT_SECRET` el SSO queda desactivado.
+## Ingreso único desde el portal
+
+Reemplaza al SSO anterior (HS256 con secreto compartido, ya eliminado: no existe `POST /api/auth/sso` ni `PORTAL_JWT_*`).
+El portal firma pases **RS256** (JWKS público) y la Wiki los verifica con el kit de `login-central` (copia en `api/src/sso-kit/`,
+dependencia `jose`). Contrato: `login-central/docs/sso/CONTRATO.md`. Rutas públicas **en la raíz de la API** (no bajo `/api`):
+
+- `GET /sso/acceso` (servidor a servidor, `Authorization: Bearer <pase use=acceso>`): `{"acceso":true,"rol":"admin|lector"}`,
+  `{"acceso":false}` o 401. **Nunca crea usuarios.**
+- `POST /sso/login` (formulario `token=<pase use=login>`): 302 a `WIKI_INICIO_URL` con la sesión abierta, o 403 (página
+  "sin acceso" con enlace al portal, sin `?volver`). Anti-CSRF: `Origin` debe ser el origen exacto del portal
+  (`SSO_PORTAL_URL`, solo scheme+host+puerto; sin `Origin`, se rechaza `Sec-Fetch-Site: cross-site`).
+- Limitador por IP (solo cuentan los fallos): `/sso/login` 20 por 15 min, `/sso/acceso` 120 por 15 min.
+
+| Variable | Valor / función |
+|---|---|
+| `SSO_JWKS_URL` | JWKS del portal (https). **Vacía = SSO desactivado** (`/sso/*` responde 404). |
+| `SSO_ISSUER` | `iss` del portal, ej. `https://ecodatos.ecologia.misiones.gob.ar/portal` (incluye el path). |
+| `SSO_AUDIENCE` | Id de la Wiki en el portal (`wiki`). |
+| `SSO_PORTAL_URL` | URL del portal (`https://ecodatos.ecologia.misiones.gob.ar/portal/`): enlace "sin acceso" y, de ella, el origen del anti-CSRF. |
+| `WIKI_INICIO_URL` | Destino del 302 (def. `/wiki/`; relativo porque el nginx de ecodatos quita el prefijo). En desarrollo: `/`. |
+| `PORTAL_URL` | Solo para el botón de `/login`. |
+
+**Usuarios y roles.** La misma búsqueda por correo (minúsculas) sirve para acceso y login:
+usuario activo con `es_admin_global` o algún rol `admin_espacio` => `admin`; cualquier otro activo => `lector`
+(sin filas en `user_space_roles` también es lector); inactivo => sin acceso. Si el correo **no existe**, `/sso/acceso`
+no crea nada y `/sso/login` lo da de alta como lector (`activo=true`, `es_admin_global=false`, nombre del pase,
+`must_change_password=false`, clave aleatoria hasheada con argon2 que nadie conoce ni se guarda). El alta es atómica
+(`INSERT ... ON CONFLICT (lower(email)) DO NOTHING` y nueva consulta): varios ingresos simultáneos dejan un solo usuario.
+`users_email_key` es único sobre `lower(email)`, así que un correo duplicado ignorando mayúsculas **no puede existir**
+en la Wiki (el caso "duplicado" del contrato no aplica acá).
+
+- **Dar rol admin:** desde la Wiki, *Administración -> Usuarios y roles*: marcar admin global o asignar `admin_espacio` en
+  un espacio. El pase no lleva roles. Quien ingresa por primera vez por el portal queda como lector hasta entonces.
+- **Revocar:** poner `activo=false` al usuario (Administración, o `UPDATE users SET activo=false WHERE lower(email)=...`).
+  Su sesión deja de valer en el acto y el portal ya no le muestra la Wiki. Los pases `login` son de un solo uso: el jti se
+  guarda en `sso_jti_usados` (migración 004; se purgan los vencidos).
+- **Auditoría:** `login_sso` al abrir sesión y `sso_rechazado` (con `ruta:motivo` en `recurso_id`) en rechazos. Nunca se
+  registran tokens ni pases.
+- **Cookie:** misma `wiki_sid` de siempre (`HttpOnly`, `SameSite=Lax`, `Secure` con `COOKIE_SECURE=true`, `Path=/`). Con `Path=/`
+  funciona bajo el prefijo externo `/wiki/` (el navegador la ve en `ecodatos.../`, y se envía a `/wiki/...`). El POST viene
+  del portal (otra página) y `Lax` permite que el navegador *guarde* la cookie en esa respuesta y la envíe en la navegación
+  GET del 302.
+- **IP real:** ecodatos -> `wiki-web` (restaura la IP desde `X-Real-IP` solo si viene de una red Docker y **pisa**
+  `X-Forwarded-For`) -> API con `trust proxy = 1`. `/sso/` en `web/nginx.conf` usa las mismas cabeceras que `/api`, así que
+  el limitador y la auditoría ven la IP del cliente.
+
+### Guía de despliegue (producción)
+
+1. Actualizar el código en la VM y completar en `.env` (ver `.env.example`):
+   ```
+   SSO_ISSUER=https://ecodatos.ecologia.misiones.gob.ar/portal
+   SSO_JWKS_URL=https://ecodatos.ecologia.misiones.gob.ar/portal/.well-known/jwks.json
+   SSO_AUDIENCE=wiki
+   SSO_PORTAL_URL=https://ecodatos.ecologia.misiones.gob.ar/portal/
+   WIKI_INICIO_URL=/wiki/
+   PORTAL_URL=https://ecodatos.ecologia.misiones.gob.ar/portal/
+   ```
+   Borrar `PORTAL_JWT_SECRET`, `PORTAL_JWT_ISSUER` y `PORTAL_JWT_AUDIENCE`: ya no se usan.
+2. `docker compose up -d --build`. El arranque de la API corre `migrate.js`, que aplica la **migración 004**
+   (`sso_jti_usados`) y reasigna permisos al usuario de la app. `wiki-web` se reconstruye con el nuevo `location /sso/`.
+   (El nginx de ecodatos **no** necesita cambios: `location ^~ /wiki/` ya cubre `/wiki/sso/...` y quita el prefijo.)
+3. Probar que la API llega al JWKS por HTTPS (mismo dominio, misma VM):
+   ```bash
+   docker compose exec api node -e "fetch(process.env.SSO_JWKS_URL).then(async r=>{console.log(r.status);console.log((await r.json()).keys?.map(k=>k.kid))}).catch(e=>{console.error('FALLA',e.cause?.code||e.message);process.exit(1)})"
+   ```
+   Debe mostrar `200` y los `kid`. Si falla por timeout/conexión (hairpin de red), descomentar el bloque `extra_hosts` del servicio `api`
+   en `docker-compose.yml` (`ecodatos.ecologia.misiones.gob.ar:host-gateway`) y `docker compose up -d api`.
+4. Comprobar las rutas por el camino real (sin pase deben dar 401/403, no 404 ni HTML de la web):
+   ```bash
+   curl -si https://ecodatos.ecologia.misiones.gob.ar/wiki/sso/acceso | head -3    # 401, Cache-Control: no-store
+   curl -si -X POST -d token=x https://ecodatos.ecologia.misiones.gob.ar/wiki/sso/login | head -3   # 403
+   ```
+   Un 404 significa `SSO_JWKS_URL` vacío; un HTML de la SPA significa que `wiki-web` no se reconstruyó.
+5. Dar de alta el sistema `wiki` en el portal (`url_login=https://ecodatos.ecologia.misiones.gob.ar/wiki/sso/login`,
+   `url_acceso=.../wiki/sso/acceso`) y probar el ingreso desde la botonera.
 
 ## Usuarios y roles por espacio
 
@@ -225,7 +291,9 @@ canal seguro.
 **En la máquina de desarrollo (sin Docker ni Postgres):**
 
 ```bash
-cd api && npm test                 # clasificación del monitor, árbol de secciones
+cd api && npm test                 # monitor, árbol de secciones, SSO con vectores
+npm test                           # (raíz) lo anterior + tests/sso-integration.test.mjs: Postgres embebida,
+                                   # acceso/login/jti/Origin/alta atómica (necesita `npm install` en la raíz)
 cd web && npm run build            # typecheck + build de Vite
 ```
 

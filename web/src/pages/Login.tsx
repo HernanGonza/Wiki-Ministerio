@@ -12,15 +12,15 @@ import { Alert } from '@/components/ui/page';
 import { invalidarBusqueda } from '@/layout/CommandPalette';
 
 export function Login() {
-  const { me, login, loading, ssoError } = useAuth();
-  const cfg = useAsync(() => api.get<{ sso: boolean; portal_url: string | null }>('/auth/config'), []);
+  const { me, login, loading } = useAuth();
+  const cfg = useAsync(() => api.get<{ portal_url: string | null }>('/auth/config'), []);
   const nav = useNavigate();
   const loc = useLocation();
   const from = (loc.state as { from?: string } | null)?.from ?? '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [ver, setVer] = useState(false);
-  const [error, setError] = useState<string | null>(ssoError);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sacudir, setSacudir] = useState(0);
 

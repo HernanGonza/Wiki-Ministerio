@@ -38,14 +38,23 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?definir ADMIN_EMAIL en .env}
       ADMIN_PASSWORD_INICIAL: ${ADMIN_PASSWORD_INICIAL:?definir ADMIN_PASSWORD_INICIAL en .env}
-      PORTAL_JWT_SECRET: ${PORTAL_JWT_SECRET:-}
-      PORTAL_JWT_ISSUER: ${PORTAL_JWT_ISSUER:-portal-mernr}
-      PORTAL_JWT_AUDIENCE: ${PORTAL_JWT_AUDIENCE:-wiki}
+      # Ingreso único RS256 (sin SSO_JWKS_URL queda desactivado)
+      SSO_ISSUER: ${SSO_ISSUER:-}
+      SSO_JWKS_URL: ${SSO_JWKS_URL:-}
+      SSO_AUDIENCE: ${SSO_AUDIENCE:-wiki}
+      SSO_PORTAL_URL: ${SSO_PORTAL_URL:-}
+      WIKI_INICIO_URL: ${WIKI_INICIO_URL:-/wiki/}
       PORTAL_URL: ${PORTAL_URL:-}
       VAULTWARDEN_URL: ${VAULTWARDEN_URL:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
     volumes:
       - wiki_files:/data/files
+    # Hairpin: la API baja el JWKS del portal por HTTPS (https://ecodatos.../portal/.well-known/jwks.json) y ese
+    # dominio está en esta MISMA VM. Desde un contenedor, la IP pública suele no responder (NAT hairpin).
+    # Si el curl de la guía de despliegue (README) falla, descomentar para que el nombre resuelva al host
+    # (nginx de ecodatos, 443). El certificado sigue validándose contra el nombre: no hace falta desactivar TLS.
+    # extra_hosts:
+    #   - "ecodatos.ecologia.misiones.gob.ar:host-gateway"
     command: ["sh", "-c", "node src/migrate.js && node src/seed.js && exec node src/server.js"]
     networks:
       - wiki_net

@@ -316,35 +316,11 @@ async function main() {
   check('logout = 204', out.status === 204);
   check('después del logout la sesión no sirve (401)', (await admin.get('/auth/me')).status === 401);
 
-  section('12b. Ingreso único (JWT del portal)');
-  const SECRET = process.env.PORTAL_JWT_SECRET;
-  if (!SECRET) {
-    console.log('  (omitido: definir PORTAL_JWT_SECRET igual al de la API para probar el SSO)');
-  } else {
-    const { createHmac } = await import('node:crypto');
-    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
-    const firmar = (claims, { secret = SECRET, alg = 'HS256' } = {}) => {
-      const body = `${b64({ alg, typ: 'JWT' })}.${b64(claims)}`;
-      return `${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
-    };
-    const t = Math.floor(Date.now() / 1000);
-    const ok = (email, extra = {}) => ({ iss: process.env.PORTAL_JWT_ISSUER || 'portal-mernr', aud: process.env.PORTAL_JWT_AUDIENCE || 'wiki', email, iat: t, exp: t + 60, jti: `${stamp}-${Math.random()}`, ...extra });
-    const sso = new Client('sso');
-    const bueno = await sso.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL)) });
-    check('SSO con JWT válido y email existente = 200', bueno.status === 200 && bueno.data?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase(), JSON.stringify(bueno.data));
-    check('la sesión SSO sirve (auth/me = 200)', (await sso.get('/auth/me')).status === 200);
-    const jti = `reuso-${stamp}`;
-    const t1 = firmar(ok(ADMIN_EMAIL, { jti }));
-    await new Client('x').post('/auth/sso', { token: t1 });
-    check('un JWT no se puede reutilizar', (await new Client('x2').post('/auth/sso', { token: t1 })).status === 401);
-    check('firma incorrecta = 401', (await anon.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL), { secret: 'otro-secreto-'.repeat(4) }) })).status === 401);
-    check('alg=none = 401', (await anon.post('/auth/sso', { token: `${b64({ alg: 'none' })}.${b64(ok(ADMIN_EMAIL))}.` })).status === 401);
-    check('token vencido = 401', (await anon.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL, { iat: t - 400, exp: t - 300 })) })).status === 401);
-    check('token con vida > 5 min = 401', (await anon.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL, { exp: t + 3600 })) })).status === 401);
-    check('audiencia incorrecta = 401', (await anon.post('/auth/sso', { token: firmar(ok(ADMIN_EMAIL, { aud: 'otro-sistema' })) })).status === 401);
-    const sinAlta = await anon.post('/auth/sso', { token: firmar(ok(`no-existe-${stamp}@example.com`)) });
-    check('email que no existe en la wiki = 403 (no se crea el usuario)', sinAlta.status === 403 && sinAlta.data?.error === 'sso_user_not_found');
-  }
+  section('12b. SSO anterior (HS256) eliminado');
+  const viejo = await anon.post('/auth/sso', { token: 'x.y.z' });
+  check('POST /api/auth/sso ya no existe (sin sesión: 401, nunca 200/403 del SSO)', viejo.status === 401 && viejo.data?.error !== 'sso_user_not_found', JSON.stringify(viejo.data));
+  const cfgPortal = await anon.get('/auth/config');
+  check('/auth/config devuelve solo portal_url', cfgPortal.status === 200 && Object.keys(cfgPortal.data ?? {}).join() === 'portal_url', JSON.stringify(cfgPortal.data));
 
   section('13. Rate limit de login (5 fallos por IP / 15 min)');
   let primero429 = null;

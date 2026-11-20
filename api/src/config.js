@@ -23,10 +23,14 @@ export const config = {
   sessionSecret: required('SESSION_SECRET'),
   cookieSecure: process.env.COOKIE_SECURE === 'true',
   sessionIdleHours: 12,
-  // Ingreso único desde el portal. Sin PORTAL_JWT_SECRET queda desactivado.
-  portalJwtSecret: process.env.PORTAL_JWT_SECRET || null,
-  portalJwtIssuer: process.env.PORTAL_JWT_ISSUER || 'portal-mernr',
-  portalJwtAudience: process.env.PORTAL_JWT_AUDIENCE || 'wiki',
+  // Ingreso único desde el portal (RS256, kit de login-central). Sin SSO_JWKS_URL queda desactivado.
+  sso: {
+    issuer: process.env.SSO_ISSUER || null,
+    jwksUrl: process.env.SSO_JWKS_URL || null,
+    audience: process.env.SSO_AUDIENCE || 'wiki',
+    portalUrl: process.env.SSO_PORTAL_URL || null, // origen exacto del portal (anti-CSRF y enlace "sin acceso")
+    inicioUrl: process.env.WIKI_INICIO_URL || '/wiki/', // relativo: el nginx de ecodatos quita /wiki/
+  },
   portalUrl: process.env.PORTAL_URL || null,
   vaultwardenUrl: process.env.VAULTWARDEN_URL || null,
   adminEmail: process.env.ADMIN_EMAIL || null,
@@ -37,8 +41,8 @@ export const config = {
 if (config.sessionSecret.length < 32) {
   throw new Error('SESSION_SECRET debe tener al menos 32 caracteres');
 }
-if (config.portalJwtSecret && config.portalJwtSecret.length < 32) {
-  throw new Error('PORTAL_JWT_SECRET debe tener al menos 32 caracteres');
+if (config.sso.jwksUrl && (!config.sso.issuer || !config.sso.portalUrl)) {
+  throw new Error('Con SSO_JWKS_URL también hay que definir SSO_ISSUER y SSO_PORTAL_URL');
 }
 if (!IDENT.test(config.db.appUser)) {
   throw new Error('APP_DB_USER solo admite minúsculas, números y guion bajo');
